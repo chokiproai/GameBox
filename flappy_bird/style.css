@@ -1,0 +1,24 @@
+@font-face {
+    font-family: 'FlappyBirdy';
+    src: url('assets/FlappyBirdy.ttf') format('truetype');
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #333;
+    font-family: 'FlappyBirdy', sans-serif;
+    overflow: hidden;
+}
+
+canvas {
+    border: 2px solid #000;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    display: block;
+    max-width: 100%;
+    max-height: 100vh;
+}
