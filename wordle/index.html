@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wordle</title>
+    <title>Wordle Việt Nam</title>
     <style>
         * {
             margin: 0;
@@ -17,7 +18,7 @@
             align-items: center;
             min-height: 100vh;
             background: #121213;
-            font-family: 'Arial', sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: #ffffff;
         }
 
@@ -26,22 +27,34 @@
             max-width: 500px;
             width: 100%;
             padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            justify-content: space-between;
+        }
+
+        header {
+            border-bottom: 1px solid #3a3a3c;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
         }
 
         h1 {
-            font-size: 36px;
-            margin-bottom: 20px;
-            letter-spacing: 0.2em;
-            font-weight: bold;
+            font-size: 32px;
+            letter-spacing: 0.1em;
+            font-weight: 700;
+            text-transform: uppercase;
         }
 
         #gameBoard {
             display: grid;
             grid-template-rows: repeat(6, 1fr);
             gap: 5px;
-            margin: 0 auto 30px;
-            width: 330px;
-            height: 396px;
+            margin: 0 auto;
+            width: 300px;
+            height: 360px;
+            flex-grow: 1;
+            align-content: center;
         }
 
         .row {
@@ -51,16 +64,17 @@
         }
 
         .tile {
-            width: 62px;
-            height: 62px;
+            width: 100%;
+            aspect-ratio: 1;
             border: 2px solid #3a3a3c;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 32px;
+            font-size: 28px;
             font-weight: bold;
             text-transform: uppercase;
-            transition: all 0.3s;
+            transition: all 0.2s;
+            user-select: none;
         }
 
         .tile.filled {
@@ -71,75 +85,114 @@
         .tile.correct {
             background-color: #538d4e;
             border-color: #538d4e;
-            animation: flip 0.5s ease-in-out;
+            animation: flip 0.6s ease-in-out;
         }
 
         .tile.present {
             background-color: #b59f3b;
             border-color: #b59f3b;
-            animation: flip 0.5s ease-in-out;
+            animation: flip 0.6s ease-in-out;
         }
 
         .tile.absent {
             background-color: #3a3a3c;
             border-color: #3a3a3c;
-            animation: flip 0.5s ease-in-out;
+            animation: flip 0.6s ease-in-out;
         }
 
         @keyframes pop {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
         }
 
         @keyframes flip {
-            0% { transform: rotateX(0); }
-            50% { transform: rotateX(90deg); }
-            100% { transform: rotateX(0); }
+            0% {
+                transform: rotateX(0);
+            }
+
+            50% {
+                transform: rotateX(90deg);
+            }
+
+            100% {
+                transform: rotateX(0);
+            }
         }
 
         @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            20% {
+                transform: translateX(-5px);
+            }
+
+            40% {
+                transform: translateX(5px);
+            }
+
+            60% {
+                transform: translateX(-5px);
+            }
+
+            80% {
+                transform: translateX(5px);
+            }
         }
 
         .shake {
-            animation: shake 0.5s ease-in-out;
+            animation: shake 0.4s ease-in-out;
         }
 
         #keyboard {
             margin: 0 auto;
-            max-width: 500px;
+            width: 100%;
+            padding-bottom: 20px;
         }
 
         .keyboard-row {
             display: flex;
             justify-content: center;
             margin-bottom: 8px;
+            touch-action: manipulation;
         }
 
         .key {
-            padding: 0;
-            margin: 0 3px;
+            flex: 1;
             height: 58px;
-            min-width: 43px;
+            margin: 0 3px;
             background-color: #818384;
             border: none;
             border-radius: 4px;
             color: #ffffff;
-            font-size: 13px;
+            font-size: 14px;
             font-weight: bold;
             cursor: pointer;
             text-transform: uppercase;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
             transition: background-color 0.2s;
         }
 
-        .key:hover {
-            opacity: 0.8;
+        .key:active {
+            background-color: #565758;
         }
 
         .key.wide {
-            min-width: 65px;
+            flex: 1.5;
+            font-size: 12px;
         }
 
         .key.correct {
@@ -155,10 +208,19 @@
         }
 
         #message {
-            height: 30px;
-            margin-bottom: 20px;
-            font-size: 16px;
+            position: fixed;
+            top: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ffffff;
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 5px;
             font-weight: bold;
+            font-size: 16px;
+            z-index: 2000;
+            display: none;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
         }
 
         .modal {
@@ -173,6 +235,9 @@
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
             text-align: center;
             z-index: 1000;
+            width: 90%;
+            max-width: 400px;
+            border: 1px solid #3a3a3c;
         }
 
         .modal h2 {
@@ -181,7 +246,7 @@
         }
 
         .modal button {
-            padding: 10px 20px;
+            padding: 12px 24px;
             background: #538d4e;
             border: none;
             border-radius: 5px;
@@ -189,17 +254,7 @@
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            margin: 5px;
-        }
-
-        .modal button:hover {
-            opacity: 0.8;
-        }
-
-        #stats {
-            margin: 20px 0;
-            font-size: 14px;
-            line-height: 1.6;
+            margin-top: 20px;
         }
 
         .overlay {
@@ -209,18 +264,43 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.7);
             z-index: 999;
+        }
+
+        .stat-box {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #aaa;
         }
     </style>
 </head>
+
 <body>
     <div id="gameContainer">
-        <h1>WORDLE</h1>
+        <header>
+            <h1>Wordle VN</h1>
+        </header>
+
         <div id="message"></div>
-        
+
         <div id="gameBoard"></div>
-        
+
         <div id="keyboard">
             <div class="keyboard-row">
                 <button class="key" data-key="q">Q</button>
@@ -246,7 +326,7 @@
                 <button class="key" data-key="l">L</button>
             </div>
             <div class="keyboard-row">
-                <button class="key wide" data-key="enter">ENTER</button>
+                <button class="key wide" data-key="enter">NHẬP</button>
                 <button class="key" data-key="z">Z</button>
                 <button class="key" data-key="x">X</button>
                 <button class="key" data-key="c">C</button>
@@ -258,31 +338,32 @@
             </div>
         </div>
     </div>
-    
+
     <div class="overlay" id="overlay"></div>
     <div class="modal" id="gameOverModal">
         <h2 id="modalTitle"></h2>
         <p id="modalMessage"></p>
-        <div id="stats"></div>
-        <button onclick="newGame()">New Game</button>
+        <div id="stats" class="stat-box"></div>
+        <button onclick="newGame()">Chơi Lại</button>
     </div>
 
     <script>
-        // Word list (common 5-letter words)
+        // Vietnamese Word List (Unaccented, 5 letters)
         const wordList = [
-            'ABOUT', 'ABOVE', 'ABUSE', 'ACTOR', 'ACUTE', 'ADMIT', 'ADOPT', 'ADULT', 'AFTER', 'AGAIN',
-            'AGENT', 'AGREE', 'AHEAD', 'ALARM', 'ALBUM', 'ALERT', 'ALIEN', 'ALIGN', 'ALIVE', 'ALLOW',
-            'ALONE', 'ALTER', 'ANGEL', 'ANGER', 'ANGLE', 'ANGRY', 'APART', 'APPLE', 'APPLY', 'ARENA',
-            'ARGUE', 'ARISE', 'ARRAY', 'ASIDE', 'ASSET', 'AVOID', 'AWARD', 'AWARE', 'BADLY', 'BAKER',
-            'BASES', 'BASIC', 'BEACH', 'BEGAN', 'BEGIN', 'BEING', 'BELOW', 'BENCH', 'BILLY', 'BIRTH',
-            'BLACK', 'BLAME', 'BLIND', 'BLOCK', 'BLOOD', 'BOARD', 'BOOST', 'BOOTH', 'BOUND', 'BRAIN',
-            'BRAND', 'BRAVE', 'BREAD', 'BREAK', 'BREED', 'BRIEF', 'BRING', 'BROAD', 'BROKE', 'BROWN',
-            'BUILD', 'BUILT', 'BUYER', 'CABLE', 'CALIF', 'CARRY', 'CATCH', 'CAUSE', 'CHAIN', 'CHAIR',
-            'CHAOS', 'CHARM', 'CHART', 'CHASE', 'CHEAP', 'CHECK', 'CHEST', 'CHIEF', 'CHILD', 'CHINA',
-            'CHOSE', 'CIVIL', 'CLAIM', 'CLASS', 'CLEAN', 'CLEAR', 'CLICK', 'CLOCK', 'CLOSE', 'CLOUD',
-            'COACH', 'COAST', 'COULD', 'COUNT', 'COURT', 'COVER', 'CRAFT', 'CRASH', 'CRAZY', 'CREAM',
-            'CRIME', 'CROSS', 'CROWD', 'CROWN', 'CRUDE', 'CURVE', 'CYCLE', 'DAILY', 'DANCE', 'DATED'
-        ];
+            'HANOI', 'DALAT', 'SAIGON', 'BANBE', 'VUIVE', 'MANME', 'YEUOI', 'THUONG', 'NHOAI', 'DITIM',
+            'VEQUE', 'ANCOM', 'UONGBI', 'CAFEA', 'TRACHANH', 'BANHMI', 'PHOBO', 'BUNCA', 'MIQUANG',
+            'HOAHONG', 'XANHLA', 'DOIMOI', 'TINHYEU', 'GIADINH', 'DATNUOC', 'CONNGUOI', 'NONSONG',
+            'BIENCA', 'RUNGXANH', 'MAYTRANG', 'NANGVANG', 'MUAROI', 'GIOMUA', 'BAOTAP', 'SONGIO',
+            'BINHMINH', 'HOANGHON', 'DEMTOI', 'NGAYMOI', 'TUONG', 'LAI', 'QUAKHU', 'HIENTAI',
+            'THANHCONG', 'THATBAI', 'NOLUC', 'COGAN', 'KIENNHAN', 'DUNGCA', 'MANHME', 'TUTIN',
+            'KHIEMTON', 'TRUNGT', 'HIEUTHA', 'TONTRONG', 'DOANKET', 'YEU thuong', 'HANHPHUC',
+            'ANLANH', 'MAYMAN', 'TAILOC', 'PHUQUY', 'VINHQUANG', 'TUHAO', 'DANHTU', 'DONGTU',
+            'TINHTU', 'SOITOC', 'KHUONMAT', 'NUOCMAT', 'NUOCMAT', 'NUOCMAT', 'NUOCMAT', 'NUOCMAT',
+            // Added more common words to ensure playability
+            'CHAO', 'NGUOI', 'KHONG', 'NHUNG', 'TRONG', 'DUOC', 'MINH', 'DANG', 'NGAY', 'THANG',
+            'NAM', 'VIET', 'NAM', 'QUOC', 'GIA', 'DAN', 'TOC', 'VAN', 'HOA', 'HOC', 'TAP',
+            'LAM', 'VIEC', 'CHOI', 'GAME', 'NHAC', 'PHIM', 'ANH', 'EM', 'CHA', 'ME', 'ONG', 'BA'
+        ].filter(w => w.length === 5).map(w => w.toUpperCase());
 
         // Game state
         let currentWord = '';
@@ -296,53 +377,47 @@
             played: 0,
             won: 0,
             streak: 0,
-            maxStreak: 0,
-            distribution: [0, 0, 0, 0, 0, 0]
+            maxStreak: 0
         };
 
-        // Load stats from localStorage
         function loadStats() {
-            const savedStats = localStorage.getItem('wordleStats');
+            const savedStats = localStorage.getItem('wordleVNStats');
             if (savedStats) {
                 stats = JSON.parse(savedStats);
             }
         }
 
-        // Save stats to localStorage
         function saveStats() {
-            localStorage.setItem('wordleStats', JSON.stringify(stats));
+            localStorage.setItem('wordleVNStats', JSON.stringify(stats));
         }
 
-        // Initialize game board
         function initBoard() {
             const board = document.getElementById('gameBoard');
             board.innerHTML = '';
-            
+
             for (let i = 0; i < 6; i++) {
                 const row = document.createElement('div');
                 row.className = 'row';
-                
+
                 for (let j = 0; j < 5; j++) {
                     const tile = document.createElement('div');
                     tile.className = 'tile';
                     tile.id = `tile-${i}-${j}`;
                     row.appendChild(tile);
                 }
-                
+
                 board.appendChild(row);
             }
         }
 
-        // Select random word
         function selectWord() {
             currentWord = wordList[Math.floor(Math.random() * wordList.length)];
-            console.log('Word:', currentWord); // For testing, remove in production
+            console.log('Đáp án:', currentWord);
         }
 
-        // Handle key press
         function handleKey(key) {
             if (gameOver) return;
-            
+
             if (key === 'enter') {
                 submitGuess();
             } else if (key === 'backspace') {
@@ -352,7 +427,6 @@
             }
         }
 
-        // Add letter to current guess
         function addLetter(letter) {
             if (currentTile < 5) {
                 const tile = document.getElementById(`tile-${currentRow}-${currentTile}`);
@@ -362,7 +436,6 @@
             }
         }
 
-        // Delete last letter
         function deleteLetter() {
             if (currentTile > 0) {
                 currentTile--;
@@ -372,34 +445,37 @@
             }
         }
 
-        // Submit guess
         function submitGuess() {
             if (currentTile !== 5) {
-                showMessage('Not enough letters');
+                showMessage('Chưa đủ ký tự');
                 shakeRow();
                 return;
             }
-            
+
             const guess = getCurrentGuess();
-            
+
+            // Simple validation: allow any 5 letter input for now to avoid frustration with limited dictionary
+            // Or strictly check against wordList if it was comprehensive
+            // For this clone, we'll be lenient or check if it exists in our list
+            /* 
             if (!wordList.includes(guess)) {
-                showMessage('Not in word list');
+                showMessage('Không có trong từ điển');
                 shakeRow();
                 return;
             }
-            
+            */
+
             guesses.push(guess);
             checkGuess(guess);
-            
+
             if (guess === currentWord) {
-                showMessage('Magnificent!');
+                setTimeout(() => showMessage('Xuất sắc!'), 1500);
                 stats.won++;
                 stats.streak++;
                 stats.maxStreak = Math.max(stats.streak, stats.maxStreak);
-                stats.distribution[currentRow]++;
                 endGame(true);
             } else if (currentRow === 5) {
-                showMessage(currentWord);
+                setTimeout(() => showMessage(currentWord), 1500);
                 stats.streak = 0;
                 endGame(false);
             } else {
@@ -408,7 +484,6 @@
             }
         }
 
-        // Get current guess
         function getCurrentGuess() {
             let guess = '';
             for (let i = 0; i < 5; i++) {
@@ -418,15 +493,14 @@
             return guess;
         }
 
-        // Check guess against word
         function checkGuess(guess) {
             const letterCount = {};
             for (let letter of currentWord) {
                 letterCount[letter] = (letterCount[letter] || 0) + 1;
             }
-            
+
             const states = new Array(5).fill('absent');
-            
+
             // First pass: mark correct letters
             for (let i = 0; i < 5; i++) {
                 if (guess[i] === currentWord[i]) {
@@ -434,7 +508,7 @@
                     letterCount[guess[i]]--;
                 }
             }
-            
+
             // Second pass: mark present letters
             for (let i = 0; i < 5; i++) {
                 if (states[i] === 'absent' && letterCount[guess[i]] > 0) {
@@ -442,29 +516,30 @@
                     letterCount[guess[i]]--;
                 }
             }
-            
+
             // Update tiles
             for (let i = 0; i < 5; i++) {
                 const tile = document.getElementById(`tile-${currentRow}-${i}`);
                 setTimeout(() => {
                     tile.classList.add(states[i]);
-                }, i * 100);
+                }, i * 250); // Slower reveal for drama
             }
-            
+
             // Update keyboard
             setTimeout(() => {
                 for (let i = 0; i < 5; i++) {
                     updateKeyboard(guess[i], states[i]);
                 }
-            }, 500);
+            }, 1250);
         }
 
-        // Update keyboard colors
         function updateKeyboard(letter, state) {
             const key = document.querySelector(`[data-key="${letter.toLowerCase()}"]`);
-            
+            if (!key) return;
+
             if (state === 'correct') {
                 key.classList.add('correct');
+                key.classList.remove('present');
             } else if (state === 'present' && !key.classList.contains('correct')) {
                 key.classList.add('present');
             } else if (state === 'absent' && !key.classList.contains('correct') && !key.classList.contains('present')) {
@@ -472,71 +547,73 @@
             }
         }
 
-        // Show message
         function showMessage(text) {
             const messageEl = document.getElementById('message');
             messageEl.textContent = text;
+            messageEl.style.display = 'block';
             setTimeout(() => {
-                messageEl.textContent = '';
+                messageEl.style.display = 'none';
             }, 2000);
         }
 
-        // Shake current row
         function shakeRow() {
-            const tiles = document.querySelectorAll(`#tile-${currentRow}-0, #tile-${currentRow}-1, #tile-${currentRow}-2, #tile-${currentRow}-3, #tile-${currentRow}-4`);
-            tiles.forEach(tile => {
-                tile.classList.add('shake');
-                setTimeout(() => tile.classList.remove('shake'), 500);
-            });
+            const row = document.querySelectorAll('.row')[currentRow];
+            row.classList.add('shake');
+            setTimeout(() => row.classList.remove('shake'), 500);
         }
 
-        // End game
         function endGame(won) {
             gameOver = true;
             stats.played++;
             saveStats();
-            
+
             setTimeout(() => {
                 showGameOverModal(won);
-            }, 1500);
+            }, 2000);
         }
 
-        // Show game over modal
         function showGameOverModal(won) {
             const modal = document.getElementById('gameOverModal');
             const overlay = document.getElementById('overlay');
             const title = document.getElementById('modalTitle');
             const message = document.getElementById('modalMessage');
             const statsEl = document.getElementById('stats');
-            
-            title.textContent = won ? 'Congratulations!' : 'Game Over';
-            message.textContent = won ? `You guessed the word in ${currentRow + 1} tries!` : `The word was ${currentWord}`;
-            
+
+            title.textContent = won ? 'Chúc Mừng!' : 'Thua Rồi!';
+            message.textContent = won ? `Bạn đã đoán đúng từ sau ${currentRow + 1} lần thử!` : `Đáp án là: ${currentWord}`;
+
             statsEl.innerHTML = `
-                <div>Games Played: ${stats.played}</div>
-                <div>Win Rate: ${stats.played > 0 ? Math.round(stats.won / stats.played * 100) : 0}%</div>
-                <div>Current Streak: ${stats.streak}</div>
-                <div>Max Streak: ${stats.maxStreak}</div>
+                <div class="stat-item">
+                    <span class="stat-value">${stats.played}</span>
+                    <span class="stat-label">Đã chơi</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">${stats.played > 0 ? Math.round(stats.won / stats.played * 100) : 0}%</span>
+                    <span class="stat-label">Thắng</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">${stats.streak}</span>
+                    <span class="stat-label">Chuỗi</span>
+                </div>
             `;
-            
+
             modal.style.display = 'block';
             overlay.style.display = 'block';
         }
 
-        // New game
         function newGame() {
             currentRow = 0;
             currentTile = 0;
             gameOver = false;
             guesses = [];
-            
+
             // Reset board
             const tiles = document.querySelectorAll('.tile');
             tiles.forEach(tile => {
                 tile.textContent = '';
                 tile.className = 'tile';
             });
-            
+
             // Reset keyboard
             const keys = document.querySelectorAll('.key');
             keys.forEach(key => {
@@ -545,15 +622,14 @@
                     key.classList.add('wide');
                 }
             });
-            
+
             // Hide modal
             document.getElementById('gameOverModal').style.display = 'none';
             document.getElementById('overlay').style.display = 'none';
-            
+
             selectWord();
         }
 
-        // Keyboard event listeners
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 handleKey('enter');
@@ -564,17 +640,16 @@
             }
         });
 
-        // On-screen keyboard event listeners
         document.querySelectorAll('.key').forEach(key => {
             key.addEventListener('click', () => {
                 handleKey(key.dataset.key);
             });
         });
 
-        // Initialize game
         loadStats();
         initBoard();
         selectWord();
     </script>
 </body>
+
 </html>

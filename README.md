@@ -10,7 +10,7 @@ You can play directly in your browser—no installation needed!
 ---
 
 ## 🌟 Available Games
-GameBox currently includes: https://github.com/attogram/games
+GameBox currently includes:
 
 1. **Schrödinger's Cat** – Quantum physics experiment: Alive or Dead?
 2. **Flappy Bird Clone** – Press Space to make the bird fly and avoid pipes.  
@@ -41,7 +41,7 @@ GameBox currently includes: https://github.com/attogram/games
 27. **Bejeweled** – Match gems to score points.
 28. **Geometry Dash** – Rhythm-based platformer.
 29. **Cookie Clicker** – Bake as many cookies as you can.
-30. **Agar.io** – Eat smaller cells to grow bigger.
+30. **Slither.io** – Move with arrow keys, eat food to grow longer.
 31. **Wordle** – Guess the hidden word.
 
 > Each game runs completely in the browser and saves high scores using **localStorage**.
