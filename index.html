@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#070809">
+  <meta name="description" content="NOIR³ — một khối Rubik cơ học chế tác thủ công. Chạm, xoay và cảm nhận từng lớp từ tính trong một không gian trình diễn tương tác.">
+  <title>NOIR³ — Cube Atelier</title>
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2308090b'/%3E%3Cpath d='M32 9 54 21v22L32 55 10 43V21z' fill='none' stroke='%23c9a96a' stroke-width='2'/%3E%3Cpath d='M32 20 45 27v13l-13 7-13-7V27z' fill='none' stroke='%23c9a96a' stroke-width='1.4' opacity='.55'/%3E%3C/svg%3E">
+  <link rel="preload" href="assets/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/manrope-vietnamese.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/cormorant-italic-vietnamese.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three.module.min.js"
+      }
+    }
+  </script>
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <div class="ambient" aria-hidden="true">
+    <div class="ambient__warm"></div>
+    <div class="ambient__cool"></div>
+    <div class="ambient__floor"></div>
+    <div class="ambient__pool"></div>
+  </div>
+
+  <canvas id="scene" class="scene" aria-label="Mô phỏng tương tác khối Rubik NOIR³. Kéo lên một mặt để xoay, kéo vùng nền để đổi góc nhìn."></canvas>
+  <div class="vignette" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <div class="loader" id="loader" role="status" aria-live="polite">
+    <div class="loader__inner">
+      <svg class="loader__mark" viewBox="0 0 64 64" aria-hidden="true">
+        <path d="M32 5 57 19v26L32 59 7 45V19z" fill="none" stroke="currentColor" stroke-width="1"/>
+        <path d="M32 17 46 25v14l-14 8-14-8V25z" fill="none" stroke="currentColor" stroke-width=".7" opacity=".45"/>
+        <circle cx="32" cy="32" r="2.2" fill="currentColor"/>
+      </svg>
+      <div class="loader__name">NOIR<sup>3</sup></div>
+      <div class="loader__track"><span></span></div>
+      <p class="loader__label" id="loaderLabel">ĐÁNH THỨC CƠ CHẾ</p>
+    </div>
+  </div>
+
+  <div class="webgl-error" id="webglError" hidden>
+    <span class="webgl-error__mark">!</span>
+    <h2>Không thể khởi tạo 3D</h2>
+    <p>Trình duyệt của bạn chưa hỗ trợ WebGL hoặc đã tắt tăng tốc phần cứng. Hãy thử mở trang bằng Chrome hoặc Safari mới nhất.</p>
+    <button type="button" class="btn btn--ghost" onclick="location.reload()">Thử lại</button>
+  </div>
+
+  <div class="app" id="app">
+    <header class="site-header">
+      <div class="brand" aria-label="NOIR Cube Atelier">
+        <svg class="brand__mark" viewBox="0 0 40 40" aria-hidden="true">
+          <path d="M20 3.5 35 11.8v16.4L20 36.5 5 28.2V11.8z" fill="none" stroke="currentColor" stroke-width=".9"/>
+          <path d="M20 11 28.8 15.8v8.4L20 29l-8.8-4.8v-8.4z" fill="none" stroke="currentColor" stroke-width=".65" opacity=".5"/>
+          <path d="M20 3.5v7.5M35 11.8l-6.2 4M35 28.2l-6.2-4M20 36.5V29M5 28.2l6.2-4M5 11.8l6.2 4" fill="none" stroke="currentColor" stroke-width=".55" opacity=".32"/>
+        </svg>
+        <span class="brand__word">NOIR<sup>3</sup></span>
+        <span class="brand__sub">CUBE ATELIER</span>
+      </div>
+
+      <div class="header-note" aria-hidden="true">
+        <span class="live-dot"></span>
+        <span>TRÌNH DIỄN TƯƠNG TÁC</span>
+        <span class="header-note__separator"></span>
+        <span>N° 003 / 100</span>
+      </div>
+
+      <div class="header-actions">
+        <button type="button" class="chrome-btn" id="helpBtn" aria-label="Mở hướng dẫn" title="Hướng dẫn">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.25" fill="none" stroke="currentColor" stroke-width="1.15"/>
+            <path d="M9.7 9.2a2.45 2.45 0 0 1 4.77.7c0 1.65-2.47 1.85-2.47 3.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            <circle cx="12" cy="16.8" r=".85" fill="currentColor"/>
+          </svg>
+          <span>HƯỚNG DẪN</span>
+        </button>
+
+        <button type="button" class="chrome-btn sound-btn" id="soundBtn" aria-pressed="true" aria-label="Tắt âm thanh" title="Bật / tắt âm thanh">
+          <span class="sound-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          <span class="sound-btn__label">ÂM THANH <b>ON</b></span>
+        </button>
+      </div>
+    </header>
+
+    <main class="experience">
+      <section class="hero" aria-labelledby="heroTitle">
+        <div class="eyebrow">
+          <span class="eyebrow__line"></span>
+          <span>ATELIER SERIES</span>
+          <span class="eyebrow__no">N° 003</span>
+        </div>
+
+        <h1 class="hero__title" id="heroTitle">
+          <span>Chạm.</span>
+          <span>Xoay.</span>
+          <span class="hero__accent">Hoàn hảo.</span>
+        </h1>
+
+        <p class="hero__copy">54 ô ceramic. Lõi hợp kim titan. Từ trường canh lớp đến từng độ. Một vật thể được chế tác để không chỉ giải — mà còn để cảm nhận.</p>
+
+        <div class="specs" aria-label="Thông số sản phẩm">
+          <div class="spec">
+            <span class="spec__value">57<small>MM</small></span>
+            <span class="spec__label">Chuẩn thi đấu</span>
+          </div>
+          <div class="spec">
+            <span class="spec__value">89<small>G</small></span>
+            <span class="spec__label">Đầm tay</span>
+          </div>
+          <div class="spec">
+            <span class="spec__value">54<small>Ô</small></span>
+            <span class="spec__label">Ceramic</span>
+          </div>
+        </div>
+
+        <div class="craft-note">
+          <span class="craft-note__mark"></span>
+          CHẾ TÁC THỦ CÔNG · 100 CÁI
+        </div>
+      </section>
+
+      <aside class="telemetry" aria-label="Trạng thái khối Rubik">
+        <div class="telemetry__head">
+          <span class="micro-label">THÔNG SỐ TRỰC TIẾP</span>
+          <span class="telemetry__edition">N° 003</span>
+        </div>
+
+        <div class="status">
+          <span class="status__dot" id="statusDot"></span>
+          <span class="status__label" id="statusLabel">SẴN SÀNG</span>
+        </div>
+
+        <div class="metrics">
+          <div class="metric metric--time">
+            <span class="metric__label">THỜI GIAN</span>
+            <span class="metric__value" id="timer">00:00.000</span>
+          </div>
+          <div class="metric">
+            <span class="metric__label">LƯỢT XOAY</span>
+            <span class="metric__value metric__value--count" id="moveCount">00</span>
+          </div>
+        </div>
+
+        <div class="move-log">
+          <div class="move-log__head">
+            <span class="micro-label">NHẬT KÝ</span>
+            <span class="move-log__meta" id="logMeta">TRỐNG</span>
+          </div>
+          <div class="move-log__track" id="historyList">
+            <span class="move-log__empty">Chưa có lượt xoay</span>
+          </div>
+        </div>
+
+        <div class="core-readout">
+          <span class="core-readout__line"></span>
+          <span>LÕI TITAN / TỪ TÍNH</span>
+          <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 1v16M1 9h16M3.4 3.4l11.2 11.2M14.6 3.4 3.4 14.6" fill="none" stroke="currentColor" stroke-width=".6" opacity=".5"/></svg>
+        </div>
+      </aside>
+    </main>
+
+    <div class="object-caption" aria-hidden="true">
+      <span class="object-caption__rule"></span>
+      <span class="object-caption__index">01</span>
+      <div>
+        <span class="object-caption__title">TITANIUM CORE</span>
+        <span class="object-caption__sub">Bản giới hạn · Geneva</span>
+      </div>
+    </div>
+
+    <div class="gesture-hint" id="gestureHint">
+      <svg viewBox="0 0 20 20" aria-hidden="true">
+        <path d="M7.2 9V5.4a1.15 1.15 0 0 1 2.3 0v3.1-4a1.15 1.15 0 0 1 2.3 0v4-2.6a1.15 1.15 0 0 1 2.3 0v3.7-1.1a1.15 1.15 0 0 1 2.3 0v4.6c0 3.1-2 5.1-5.1 5.1-2.4 0-3.9-1.1-5.1-3.2l-1.8-3.1a1.3 1.3 0 0 1 2.1-1.5L7.2 11" fill="none" stroke="currentColor" stroke-width=".9" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Kéo mặt khối để xoay</span>
+      <i></i>
+      <span>Kéo nền để ngắm</span>
+      <i></i>
+      <span>Cuộn để phóng to</span>
+    </div>
+
+    <footer class="control-dock" aria-label="Bảng điều khiển khối Rubik">
+      <button type="button" class="btn btn--primary" id="scrambleBtn">
+        <svg class="btn__icon" viewBox="0 0 22 22" aria-hidden="true">
+          <path d="M3.2 6.1h2.9c4.1 0 5.6 9.8 9.7 9.8h2.7M15.7 13l3.1 2.9-3.1 2.9M3.2 15.9h2.9c1.3 0 2.4-1 3.4-2.4M13.6 8.5c.7-.9 1.4-1.6 2.2-1.6h2.7M15.7 4l3.1 2.9-3.1 2.9" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="btn__text">TRỘN KHỐI</span>
+      </button>
+
+      <span class="dock-rule" aria-hidden="true"></span>
+
+      <div class="face-panel">
+        <div class="face-panel__head">
+          <span>XOAY MẶT</span>
+          <span class="face-panel__mode" id="modeLabel">THUẬN</span>
+        </div>
+        <div class="face-buttons" role="group" aria-label="Xoay các mặt của khối">
+          <button type="button" class="face-btn" data-face="U" data-name="Trên" aria-label="Xoay mặt trên U theo chiều kim đồng hồ">U</button>
+          <button type="button" class="face-btn" data-face="D" data-name="Dưới" aria-label="Xoay mặt dưới D theo chiều kim đồng hồ">D</button>
+          <button type="button" class="face-btn" data-face="L" data-name="Trái" aria-label="Xoay mặt trái L theo chiều kim đồng hồ">L</button>
+          <button type="button" class="face-btn" data-face="R" data-name="Phải" aria-label="Xoay mặt phải R theo chiều kim đồng hồ">R</button>
+          <button type="button" class="face-btn" data-face="F" data-name="Trước" aria-label="Xoay mặt trước F theo chiều kim đồng hồ">F</button>
+          <button type="button" class="face-btn" data-face="B" data-name="Sau" aria-label="Xoay mặt sau B theo chiều kim đồng hồ">B</button>
+        </div>
+      </div>
+
+      <button type="button" class="prime-btn" id="primeToggle" aria-pressed="false" title="Xoay ngược chiều (giữ Shift)">
+        <svg viewBox="0 0 18 18" aria-hidden="true">
+          <path d="M14.2 7.1A5.5 5.5 0 1 0 14 11.2M14.2 3.4v3.7h-3.7" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>NGƯỢC</span>
+      </button>
+
+      <span class="dock-rule dock-rule--last" aria-hidden="true"></span>
+
+      <div class="utility-group">
+        <button type="button" class="utility-btn" id="undoBtn" title="Hoàn tác lượt vừa xoay (Backspace)">
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <path d="m8.1 5.1-4.2 4.2 4.2 4.2M4.4 9.3h6.3a4.5 4.5 0 0 1 0 9" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>HOÀN TÁC</span>
+        </button>
+        <button type="button" class="utility-btn" id="resetBtn" title="Xếp lại khối về trạng thái ban đầu (Home)">
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M4.1 8.1A6.2 6.2 0 1 1 4 11.7M4.1 3.9v4.2h4.2" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>XẾP LẠI</span>
+        </button>
+      </div>
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite">
+      <span class="toast__icon">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.7 12.1 7.9 18.3 10l-6.2 2.1L10 18.3 7.9 12.1 1.7 10l6.2-2.1z" fill="currentColor"/></svg>
+      </span>
+      <span class="toast__copy"><strong id="toastTitle">Đã sẵn sàng</strong><small id="toastText">Chạm vào khối để bắt đầu.</small></span>
+    </div>
+
+    <div class="solved-signature" id="solvedSignature" aria-hidden="true">
+      <span>GIẢI HOÀN HẢO</span>
+      <strong id="solvedTime">00:00.000</strong>
+      <small id="solvedMoves">00 LƯỢT</small>
+    </div>
+
+    <dialog class="help-dialog" id="helpDialog" aria-labelledby="helpTitle">
+      <div class="help-dialog__top">
+        <span class="micro-label">CẨM NANG SỬ DỤNG</span>
+        <button type="button" class="help-dialog__close" id="helpClose" aria-label="Đóng hướng dẫn">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4.5 4.5 11 11M15.5 4.5l-11 11" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <h2 id="helpTitle">Chạm vào <em>từng lớp.</em></h2>
+      <p class="help-dialog__intro">Mọi chuyển động trên màn hình tương ứng với một lượt xoay thật. Kết cấu, quán tính và âm thanh cơ học đều được mô phỏng trực tiếp.</p>
+
+      <div class="help-grid">
+        <section class="help-card">
+          <span class="help-card__index">01</span>
+          <h3>Xoay bằng tay</h3>
+          <p>Kéo một ô màu theo hướng bạn muốn xoay. Mặt đó sẽ quay theo lực kéo của bạn.</p>
+          <div class="gesture-line"><span>KÉO</span><span class="gesture-line__arrow">→</span><span>MẶT KHỐI</span></div>
+        </section>
+        <section class="help-card">
+          <span class="help-card__index">02</span>
+          <h3>Ngắm vật thể</h3>
+          <p>Kéo vùng nền tối để xoay góc nhìn. Con lăn chuột hoặc chụm hai ngón để đến gần hơn.</p>
+          <div class="gesture-line"><span>KÉO</span><span class="gesture-line__arrow">↻</span><span>NỀN</span></div>
+        </section>
+        <section class="help-card">
+          <span class="help-card__index">03</span>
+          <h3>Bàn phím</h3>
+          <p>Dùng các phím mặt để xoay nhanh. Giữ <kbd>Shift</kbd> để xoay ngược chiều.</p>
+          <div class="key-row">
+            <kbd>U</kbd><kbd>D</kbd><kbd>L</kbd><kbd>R</kbd><kbd>F</kbd><kbd>B</kbd>
+          </div>
+        </section>
+        <section class="help-card">
+          <span class="help-card__index">04</span>
+          <h3>Phím tắt</h3>
+          <p>Trộn nhanh, hoàn tác hoặc đưa khối trở lại trạng thái hoàn chỉnh.</p>
+          <div class="shortcut-list">
+            <span><kbd>Space</kbd> Trộn khối</span>
+            <span><kbd>⌫</kbd> Hoàn tác</span>
+            <span><kbd>Home</kbd> Xếp lại</span>
+          </div>
+        </section>
+      </div>
+
+      <div class="help-dialog__footer">
+        <span class="status-inline"><i></i> Bản mô phỏng vật lý · NOIR³</span>
+        <button type="button" class="btn btn--light" id="helpOk">BẮT ĐẦU XOAY</button>
+      </div>
+    </dialog>
+
+    <div class="sr-only" id="announcer" aria-live="polite"></div>
+  </div>
+</body>
+</html>

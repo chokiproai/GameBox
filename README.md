@@ -1,47 +1,37 @@
-# GameBox 🎮
+# NOIR³ — Cube Atelier
 
-> [!Note]
->
-> Feel free to add your own games to this repository by submitting a pull request.
+Một trải nghiệm Rubik 3D trình diễn theo phong cách sản phẩm cao cấp: khối 27 cubie bo góc, 54 ô ceramic, đế trưng bày phủ vàng, ánh sáng studio và âm thanh cơ học tổng hợp trực tiếp bằng Web Audio.
 
-**GameBox** is a collection of simple web-based mini-games that run entirely on the client side (no server required).  
-You can play directly in your browser—no installation needed!
+## Chạy trang
 
----
+Trang dùng ES modules và font cục bộ, nên cần mở qua một static server (không mở trực tiếp bằng `file://`).
 
-## 🌟 Available Games
-GameBox currently includes:
+```powershell
+python -m http.server 4173 --bind 127.0.0.1
+```
 
-1. **Schrödinger's Cat** – Quantum physics experiment: Alive or Dead?
-2. **Flappy Bird Clone** – Press Space to make the bird fly and avoid pipes.  
-3. **Snake** – Move with arrow keys, eat food to grow longer.  
-4. **2048** – Combine matching numbers to reach the highest score.  
-5. **Dino Runner** – Run and jump over obstacles like Chrome's offline dinosaur game.  
-6. **Memory Card** – Flip cards and match pairs.  
-7. **Reaction Test** – Test your reaction speed by clicking when the color changes.  
-8. **Clicker Game** – Click to gain points and upgrade.
-9. **Tower Defense** – Build towers to defend your base.
-10. **Tetris** – Classic block-stacking puzzle.
-11. **Sim City** – Build and manage your own city.
-12. **RPG Adventure** – Explore the world and fight monsters.
-13. **Table Tennis** – Classic ping pong game.
-14. **Minesweeper** – Find mines without detonating them.
-15. **Pac-Man** – Eat dots and avoid ghosts.
-16. **Breakout** – Smash bricks with a ball.
-17. **Space Invaders** – Defeat waves of aliens.
-18. **Sudoku** – Fill the grid with numbers.
-19. **Whack-a-Mole** – Hit the moles before they hide.
-20. **Frogger** – Help the frog cross the road.
-21. **Asteroids** – Destroy asteroids with your spaceship.
-22. **Helicopter** – Fly the helicopter and avoid obstacles.
-23. **Train Defence** – Defend the train from attacks.
-24. **Doodle Jump** – Jump as high as you can.
-25. **Crossy Road** – Cross the endless roads and rivers.
-26. **Plants vs Zombies** – Defend your garden from zombies.
-27. **Bejeweled** – Match gems to score points.
-28. **Geometry Dash** – Rhythm-based platformer.
-29. **Cookie Clicker** – Bake as many cookies as you can.
-30. **Slither.io** – Move with arrow keys, eat food to grow longer.
-31. **Wordle** – Guess the hidden word.
+Sau đó mở <http://127.0.0.1:4173/index.html>.
 
-> Each game runs completely in the browser and saves high scores using **localStorage**.
+Có thể dùng bất kỳ static server nào khác, ví dụ `npx serve .`.
+
+## Điều khiển
+
+- **Kéo một ô màu** để xoay lớp đó; lớp bám theo con trỏ và tự khớp khi thả.
+- **Kéo vùng nền** để xoay góc nhìn. **Cuộn chuột** hoặc **chụm hai ngón** để phóng to.
+- **U / D / L / R / F / B** để xoay mặt; giữ **Shift** hoặc bật **NGƯỢC** để xoay ngược chiều.
+- **Space** trộn khối, **Backspace** hoàn tác, **Home** xếp lại, **?** mở hướng dẫn.
+- Nhấp đúp vùng nền để trở về góc máy ban đầu.
+
+## Cấu trúc
+
+- `index.html`, `styles.css` — giao diện và hệ thống hình ảnh.
+- `app.js` — khởi động scene, điều khiển chuột/bàn phím/cảm ứng.
+- `src/config.js` — màu, thông số khối, định nghĩa lượt xoay.
+- `src/cube/` — hình học, vật liệu, ánh sáng, cơ cấu xoay và camera.
+- `src/game.js` — trộn, hoàn tác, xếp lại, đồng hồ, nhật ký nước đi.
+- `src/sound.js` — âm thanh cơ học tổng hợp.
+- `src/ui.js` — trạng thái, toast, hộp thoại hướng dẫn.
+- `vendor/` — Three.js r169 và RoundedBoxGeometry chạy cục bộ.
+- `assets/fonts/` — Manrope và Cormorant Garamond (WOFF2) chạy cục bộ.
+
+Không có phụ thuộc mạng khi chạy.
