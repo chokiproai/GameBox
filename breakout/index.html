@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Super Neon Breakout - Chaos Mode</title>
+    <style>
+        :root {
+            --bg-color: #050510;
+            --text-color: #00f260;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            touch-action: none;
+            user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 50px rgba(5, 117, 230, 0.2);
+            border: 2px solid #333;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            background-color: #111;
+            cursor: none;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            pointer-events: none;
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-shadow: 0 0 10px currentColor;
+            z-index: 5;
+        }
+
+        .score { color: #00f260; }
+        .lives { color: #ff0055; }
+
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            backdrop-filter: blur(5px);
+            transition: opacity 0.3s;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            margin: 0 0 20px 0;
+            background: linear-gradient(to right, #ff0055, #ff9900, #ffff00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            text-align: center;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #ff0055, #ff9900);
+            border: none;
+            padding: 15px 50px;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 0 20px rgba(255, 0, 85, 0.5);
+            transition: transform 0.1s;
+        }
+
+        .btn:active { transform: scale(0.95); }
+
+        .tutorial {
+            margin-top: 20px;
+            color: #aaa;
+            font-size: 1rem;
+            line-height: 1.6;
+            text-align: center;
+        }
+        
+        .powerup-icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="ui-layer">
+            <div class="score">SCORE: <span id="scoreVal">0</span></div>
+            <div class="lives">❤❤❤</div>
+        </div>
+
+        <div id="overlay">
+            <h1>Chaos Breakout</h1>
+            <button class="btn" onclick="startGame()">Start Chaos</button>
+            <div class="tutorial">
+                <p>Map ngẫu nhiên • Gạch cứng hơn • Nổ to hơn</p>
+                <p><span class="powerup-icon" style="background:#ff3333"></span>x3 Bóng &nbsp; 
+                   <span class="powerup-icon" style="background:#33ff33"></span>Dài vợt &nbsp; 
+                   <span class="powerup-icon" style="background:#ff33aa"></span>+1 Mạng</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const overlay = document.getElementById('overlay');
+        const scoreEl = document.getElementById('scoreVal');
+        const livesEl = document.querySelector('.lives');
+
+        // --- AUDIO SYSTEM ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new AudioContext();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+            
+            if (type === 'hit_paddle') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
+            } else if (type === 'hit_brick') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(200 + Math.random()*200, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
+            } else if (type === 'powerup') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.linearRampToValueAtTime(1200, now + 0.2);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.2);
+                osc.start(now); osc.stop(now + 0.2);
+            } else if (type === 'die') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.exponentialRampToValueAtTime(50, now + 0.5);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.5);
+                osc.start(now); osc.stop(now + 0.5);
+            }
+        }
+
+        // --- GAME CONSTANTS ---
+        let WIDTH = 800, HEIGHT = 600;
+        const PADDLE_H = 15;
+        const BALL_R = 7;
+        const BRICK_ROWS = 8; // Tăng số hàng để map dày hơn
+        const BRICK_COLS = 10;
+        
+        // --- STATE ---
+        let isRunning = false;
+        let animationId;
+        let score = 0;
+        let lives = 3;
+        let shakeTime = 0;
+
+        // --- OBJECTS ---
+        let paddle = { x: 0, y: 0, w: 100, color: '#00f260' };
+        let balls = [];
+        let bricks = [];
+        let particles = [];
+        let powerups = [];
+
+        // Colors theo độ cứng (HP): 1->Xanh, 2->Vàng, 3->Đỏ
+        const HP_COLORS = {
+            1: '#00ff00', // Xanh lá
+            2: '#ffff00', // Vàng
+            3: '#ff0055'  // Đỏ neon
+        };
+
+        // --- RESIZE ---
+        function resize() {
+            let mw = Math.min(window.innerWidth - 20, 800);
+            let mh = Math.min(window.innerHeight - 40, 600);
+            canvas.width = WIDTH = mw;
+            canvas.height = HEIGHT = mh;
+            paddle.y = HEIGHT - 40;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // --- CLASSES ---
+        class Ball {
+            constructor(x, y, dx, dy) {
+                this.x = x; this.y = y;
+                this.dx = dx; this.dy = dy;
+                this.speed = 6;
+                this.trail = [];
+            }
+            draw() {
+                this.trail.push({x: this.x, y: this.y});
+                if (this.trail.length > 8) this.trail.shift();
+                ctx.beginPath();
+                for(let i=0; i<this.trail.length; i++){
+                    let t = this.trail[i];
+                    ctx.fillStyle = `rgba(255, 255, 255, ${i/10})`;
+                    ctx.arc(t.x, t.y, BALL_R * (i/8), 0, Math.PI*2);
+                    ctx.fill();
+                }
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, BALL_R, 0, Math.PI*2);
+                ctx.fillStyle = '#fff';
+                ctx.shadowBlur = 10; ctx.shadowColor = '#fff';
+                ctx.fill(); ctx.shadowBlur = 0;
+            }
+            update() {
+                this.x += this.dx;
+                this.y += this.dy;
+                if (this.x + BALL_R > WIDTH || this.x - BALL_R < 0) { this.dx = -this.dx; shakeScreen(2); }
+                if (this.y - BALL_R < 0) { this.dy = -this.dy; shakeScreen(2); }
+            }
+        }
+
+        class PowerUp {
+            constructor(x, y, type) {
+                this.x = x; this.y = y;
+                this.type = type; this.dy = 3; this.r = 10;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+                if (this.type === 'multiball') ctx.fillStyle = '#ff3333';
+                else if (this.type === 'wide') ctx.fillStyle = '#33ff33';
+                else ctx.fillStyle = '#ff33aa';
+                ctx.shadowBlur = 10; ctx.shadowColor = ctx.fillStyle;
+                ctx.fill(); ctx.shadowBlur = 0;
+                ctx.fillStyle = '#fff'; ctx.font = '12px Arial';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                let symbol = this.type === 'multiball' ? 'x3' : (this.type === 'wide' ? '↔' : '❤');
+                ctx.fillText(symbol, this.x, this.y);
+            }
+            update() { this.y += this.dy; }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y; this.color = color;
+                this.size = Math.random() * 3 + 2;
+                this.vx = (Math.random() - 0.5) * 8;
+                this.vy = (Math.random() - 0.5) * 8;
+                this.life = 1.0;
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy;
+                this.life -= 0.03;
+            }
+            draw() {
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        // --- SPAWN LOGIC (CHAOS MODE) ---
+        function spawnBricks() {
+            bricks = [];
+            let pad = 8;
+            let offsetTop = 60;
+            let offsetLeft = 35;
+            let bw = (WIDTH - (offsetLeft*2) - (pad*(BRICK_COLS-1))) / BRICK_COLS;
+            
+            for(let c=0; c<BRICK_COLS; c++) {
+                bricks[c] = [];
+                for(let r=0; r<BRICK_ROWS; r++) {
+                    // Random 20% là lỗ hổng để tạo map thú vị
+                    let exists = Math.random() > 0.2;
+                    
+                    if (exists) {
+                        // Random HP based on row
+                        // Hàng càng cao tỉ lệ HP cao càng lớn
+                        let rand = Math.random();
+                        let hp = 1;
+                        
+                        if (r < 2) { // Top rows: Hard
+                            if (rand > 0.5) hp = 3;
+                            else hp = 2;
+                        } else if (r < 5) { // Middle
+                            if (rand > 0.7) hp = 2;
+                            else hp = 1;
+                        } else { // Bottom
+                            hp = 1;
+                        }
+
+                        bricks[c][r] = { 
+                            x: 0, y: 0, 
+                            status: 1, 
+                            hp: hp,
+                            maxHp: hp, // Lưu max để tính màu nếu cần
+                            color: HP_COLORS[hp],
+                            w: bw, h: 20 
+                        };
+                    } else {
+                        // Empty slot
+                        bricks[c][r] = { status: 0, x:0, y:0, w:bw, h:20 };
+                    }
+                }
+            }
+        }
+
+        function spawnBall() {
+            let b = new Ball(WIDTH/2, HEIGHT-60, 4 * (Math.random() > 0.5 ? 1 : -1), -4);
+            balls.push(b);
+        }
+
+        function createExplosion(x, y, color) {
+            for(let i=0; i<12; i++) particles.push(new Particle(x, y, color));
+        }
+
+        function shakeScreen(amount) { shakeTime = amount; }
+
+        function dropPowerUp(x, y) {
+            let rand = Math.random();
+            let type = '';
+            // Tăng tỉ lệ rớt đồ để game vui hơn
+            if (rand < 0.15) type = 'multiball';
+            else if (rand < 0.25) type = 'wide';
+            else if (rand < 0.28) type = 'life';
+            else return;
+            powerups.push(new PowerUp(x, y, type));
+        }
+
+        // --- MAIN LOOP ---
+        function update() {
+            let dx = 0, dy = 0;
+            if (shakeTime > 0) {
+                dx = (Math.random() - 0.5) * 10;
+                dy = (Math.random() - 0.5) * 10;
+                shakeTime--;
+            }
+            ctx.setTransform(1, 0, 0, 1, dx, dy);
+
+            for (let i = balls.length - 1; i >= 0; i--) {
+                let b = balls[i];
+                b.update();
+
+                // Paddle Hit
+                if (b.y + BALL_R >= paddle.y && b.y - BALL_R <= paddle.y + PADDLE_H &&
+                    b.x >= paddle.x && b.x <= paddle.x + paddle.w) {
+                    playSound('hit_paddle');
+                    b.dy = -Math.abs(b.dy);
+                    let hitPoint = b.x - (paddle.x + paddle.w/2);
+                    b.dx = hitPoint * 0.15;
+                    let spd = Math.sqrt(b.dx*b.dx + b.dy*b.dy);
+                    b.dx = (b.dx/spd) * b.speed;
+                    b.dy = (b.dy/spd) * b.speed;
+                    if(b.speed < 12) b.speed += 0.1; // Tăng tốc không giới hạn (nhưng chậm)
+                }
+
+                if (b.y - BALL_R > HEIGHT) balls.splice(i, 1);
+            }
+
+            if (balls.length === 0) {
+                lives--;
+                playSound('die');
+                paddle.w = 100;
+                updateUI();
+                if (lives > 0) spawnBall();
+                else { gameOver(false); return; }
+            }
+
+            // Brick Collision
+            let bricksLeft = 0;
+            for(let c=0; c<BRICK_COLS; c++) {
+                for(let r=0; r<BRICK_ROWS; r++) {
+                    let br = bricks[c][r];
+                    if (br.status === 1) {
+                        bricksLeft++;
+                        for (let b of balls) {
+                            if (b.x > br.x && b.x < br.x + br.w && b.y > br.y && b.y < br.y + br.h) {
+                                b.dy = -b.dy;
+                                playSound('hit_brick');
+                                br.hp--;
+                                
+                                // Cập nhật màu dựa trên HP còn lại
+                                if (br.hp > 0) {
+                                    br.color = HP_COLORS[br.hp];
+                                    createExplosion(b.x, b.y, '#fff');
+                                } else {
+                                    br.status = 0;
+                                    score += 10 * br.maxHp; // Gạch cứng nhiều điểm hơn
+                                    createExplosion(br.x + br.w/2, br.y + br.h/2, HP_COLORS[br.maxHp]);
+                                    shakeScreen(5);
+                                    dropPowerUp(br.x + br.w/2, br.y + br.h/2);
+                                    updateUI();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (bricksLeft === 0) { winLevel(); return; }
+
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                let p = powerups[i];
+                p.update();
+                if (p.y + p.r >= paddle.y && p.y - p.r <= paddle.y + PADDLE_H &&
+                    p.x >= paddle.x && p.x <= paddle.x + paddle.w) {
+                    playSound('powerup');
+                    activatePowerUp(p.type);
+                    powerups.splice(i, 1);
+                } else if (p.y > HEIGHT) powerups.splice(i, 1);
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                if(particles[i].life <= 0) particles.splice(i, 1);
+            }
+        }
+
+        function activatePowerUp(type) {
+            if (type === 'wide') {
+                paddle.w = Math.min(paddle.w + 50, 250);
+                setTimeout(() => paddle.w = Math.max(100, paddle.w - 50), 10000);
+            } else if (type === 'life') {
+                lives++; updateUI();
+            } else if (type === 'multiball') {
+                if (balls.length > 0) {
+                    let ref = balls[0];
+                    balls.push(new Ball(ref.x, ref.y, -ref.dx, ref.dy));
+                    balls.push(new Ball(ref.x, ref.y, ref.dx * 0.5, ref.dy * 1.2));
+                }
+            }
+        }
+
+        function draw() {
+            ctx.fillStyle = 'rgba(5, 5, 16, 0.4)';
+            ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+            for(let c=0; c<BRICK_COLS; c++) {
+                for(let r=0; r<BRICK_ROWS; r++) {
+                    let b = bricks[c][r];
+                    if (b.status === 1) {
+                        let bx = (c * (b.w + 8)) + 35;
+                        let by = (r * (b.h + 8)) + 60;
+                        b.x = bx; b.y = by;
+                        ctx.fillStyle = b.color;
+                        if (b.hp > 1) {
+                            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                            ctx.lineWidth = 2;
+                            ctx.strokeRect(bx, by, b.w, b.h);
+                        }
+                        ctx.shadowBlur = 10; ctx.shadowColor = b.color;
+                        ctx.fillRect(bx, by, b.w, b.h);
+                        ctx.shadowBlur = 0;
+                    }
+                }
+            }
+
+            ctx.fillStyle = paddle.color;
+            ctx.shadowBlur = 15; ctx.shadowColor = paddle.color;
+            ctx.fillRect(paddle.x, paddle.y, paddle.w, PADDLE_H);
+            ctx.shadowBlur = 0;
+
+            balls.forEach(b => b.draw());
+            powerups.forEach(p => p.draw());
+            particles.forEach(p => p.draw());
+        }
+
+        function loop() {
+            if (!isRunning) return;
+            update();
+            draw();
+            animationId = requestAnimationFrame(loop);
+        }
+
+        function updateUI() {
+            scoreEl.innerText = score;
+            let h = ""; for(let i=0; i<lives; i++) h += "❤";
+            livesEl.innerText = h;
+        }
+
+        function gameOver(win) {
+            isRunning = false;
+            let title = win ? "CHAOS CLEARED!" : "GAME OVER";
+            let btnText = win ? "NEXT CHAOS" : "RETRY";
+            document.querySelector('#overlay h1').innerText = title;
+            document.querySelector('#overlay button').innerText = btnText;
+            overlay.style.opacity = 1;
+            overlay.style.pointerEvents = 'auto';
+        }
+
+        function winLevel() {
+            // Khi thắng, tạo màn mới luôn
+            playSound('powerup');
+            score += 1000;
+            // Tăng tốc độ game 1 chút cho vòng sau (nếu muốn giữ state)
+            // Ở đây đơn giản là hiện menu thắng
+            gameOver(true); 
+        }
+
+        function startGame() {
+            initAudio();
+            overlay.style.opacity = 0;
+            overlay.style.pointerEvents = 'none';
+            score = 0; lives = 3;
+            balls = []; powerups = []; particles = [];
+            paddle.w = 100;
+            updateUI();
+            
+            spawnBricks();
+            spawnBall();
+            paddle.x = WIDTH/2 - paddle.w/2;
+            
+            if (!isRunning) { isRunning = true; loop(); }
+        }
+
+        document.addEventListener("mousemove", e => {
+            let relativeX = e.clientX - canvas.offsetLeft;
+            if(relativeX > 0 && relativeX < WIDTH) paddle.x = relativeX - paddle.w/2;
+        });
+        canvas.addEventListener("touchmove", e => {
+            e.preventDefault();
+            let relativeX = e.touches[0].clientX - canvas.offsetLeft;
+            if(relativeX > 0 && relativeX < WIDTH) paddle.x = relativeX - paddle.w/2;
+        }, {passive: false});
+
+    </script>
+</body>
+</html>

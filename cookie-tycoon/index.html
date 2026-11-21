@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cookie Bakery Tycoon</title>
+    <style>
+        :root {
+            --bg-color: #fdf6e3;
+            --panel-bg: #fff;
+            --primary-color: #d35400;
+            --secondary-color: #e67e22;
+            --text-color: #2c3e50;
+            --danger-color: #e74c3c;
+            --border-radius: 12px;
+            --shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* HEADER */
+        header {
+            background: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+            z-index: 10;
+            height: 70px;
+        }
+
+        .header-title h1 { margin: 0; font-size: 1.4rem; color: var(--primary-color); }
+        .header-title .subtitle { font-size: 0.8rem; color: #7f8c8d; }
+
+        .btn-reset {
+            background-color: var(--danger-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            box-shadow: 0 2px 5px rgba(231, 76, 60, 0.3);
+        }
+
+        .btn-reset:hover { background-color: #c0392b; }
+        .btn-reset:active { transform: scale(0.95); }
+
+        /* MAIN LAYOUT */
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            height: calc(100vh - 70px);
+        }
+
+        /* LEFT PANEL: THE COOKIE */
+        .bakery-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: radial-gradient(circle, #fff0dc 0%, #fdf6e3 70%);
+            position: relative;
+        }
+
+        .money-display {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--text-color);
+            margin-bottom: 5px;
+            text-shadow: 0 2px 0 rgba(0,0,0,0.1);
+        }
+
+        .cps-display {
+            font-size: 1rem;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            background: rgba(255,255,255,0.9);
+            padding: 5px 15px;
+            border-radius: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        #big-cookie {
+            font-size: 160px;
+            cursor: pointer;
+            transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            filter: drop-shadow(0 15px 15px rgba(0,0,0,0.15));
+            z-index: 5;
+            /* Prevent image dragging */
+            -webkit-user-drag: none;
+        }
+
+        #big-cookie:active { transform: scale(0.9); }
+        #big-cookie:hover { transform: scale(1.05); }
+
+        /* RIGHT PANEL: SHOP */
+        .shop-section {
+            flex: 1;
+            background: var(--panel-bg);
+            border-left: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            max-width: 450px;
+            min-width: 320px;
+        }
+
+        .tabs {
+            display: flex;
+            background: #fff;
+            padding: 0 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px 0;
+            text-align: center;
+            cursor: pointer;
+            font-weight: bold;
+            color: #95a5a6;
+            transition: 0.2s;
+            position: relative;
+        }
+
+        .tab.active {
+            color: var(--primary-color);
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 20%;
+            width: 60%;
+            height: 3px;
+            background: var(--primary-color);
+            border-radius: 3px 3px 0 0;
+        }
+
+        .upgrade-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            background: #fafafa;
+        }
+
+        /* Scrollbar Styling */
+        .upgrade-list::-webkit-scrollbar { width: 6px; }
+        .upgrade-list::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+        .upgrade-item {
+            display: flex;
+            align-items: center;
+            background: white;
+            margin-bottom: 10px;
+            padding: 12px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+            border: 1px solid transparent;
+            transition: all 0.2s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upgrade-item:hover { transform: translateY(-2px); box-shadow: 0 5px 10px rgba(0,0,0,0.05); border-color: #eee; }
+        .upgrade-item:active { transform: scale(0.98); }
+        
+        .upgrade-item.disabled { 
+            opacity: 0.6; 
+            filter: grayscale(1); 
+            cursor: default; 
+            transform: none; 
+            background: #f0f0f0;
+        }
+
+        /* Ripple effect for purchase */
+        @keyframes ripple {
+            0% { background-color: rgba(46, 204, 113, 0.2); }
+            100% { background-color: transparent; }
+        }
+        .upgrade-item.purchased { animation: ripple 0.3s; }
+
+        .icon-box {
+            font-size: 32px;
+            width: 54px;
+            height: 54px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fdf6e3;
+            border-radius: 12px;
+            margin-right: 15px;
+        }
+
+        .info { flex: 1; }
+        .name { font-weight: bold; font-size: 1rem; color: #34495e; }
+        .bonus { font-size: 0.8rem; color: #7f8c8d; margin-top: 2px; }
+        
+        .cost-container {
+            display: flex;
+            align-items: center;
+            margin-top: 4px;
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+
+        .count-badge {
+            background: #2c3e50;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            min-width: 30px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* FLOATING TEXT */
+        .floating-text {
+            position: absolute;
+            font-weight: 800;
+            color: var(--primary-color);
+            pointer-events: none;
+            animation: floatUp 0.8s cubic-bezier(0.075, 0.82, 0.165, 1) forwards;
+            font-size: 1.8rem;
+            z-index: 100;
+            text-shadow: 2px 2px 0px rgba(255,255,255,0.8);
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(0.5); }
+            50% { opacity: 1; transform: translateY(-30px) scale(1.2); }
+            100% { opacity: 0; transform: translateY(-60px) scale(1); }
+        }
+
+        /* NOTIFICATIONS */
+        #notification-area {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+            z-index: 1000;
+            width: 90%;
+            max-width: 300px;
+            align-items: center;
+        }
+
+        .toast {
+            background: rgba(44, 62, 80, 0.9);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 0.95rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            animation: toastPop 3s forwards;
+            text-align: center;
+            backdrop-filter: blur(4px);
+        }
+
+        @keyframes toastPop {
+            0% { opacity: 0; transform: translateY(20px) scale(0.9); }
+            10% { opacity: 1; transform: translateY(0) scale(1); }
+            90% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-20px) scale(0.9); }
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 800px) {
+            .container { flex-direction: column; height: auto; overflow-y: auto; }
+            .bakery-section { min-height: 350px; border-bottom: 1px solid #ddd; }
+            .shop-section { max-width: 100%; height: 500px; }
+            header { position: sticky; top: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-title">
+            <h1 id="bakery-name">Gánh Hàng Rong</h1>
+            <div class="subtitle">Tycoon Simulator</div>
+        </div>
+        <button class="btn-reset" onclick="resetData()">
+            <span>🗑️</span> Xóa Dữ Liệu
+        </button>
+    </header>
+
+    <div class="container">
+        <div class="bakery-section">
+            <div class="money-display">$<span id="money">0</span></div>
+            <div class="cps-display"><span id="cps">0</span> $ / giây</div>
+            
+            <div id="big-cookie">🍪</div>
+        </div>
+
+        <div class="shop-section">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('equip')">🛠️ Thiết Bị</div>
+                <div class="tab" onclick="switchTab('staff')">👥 Nhân Viên</div>
+            </div>
+
+            <div id="equip-list" class="upgrade-list"></div>
+            <div id="staff-list" class="upgrade-list" style="display: none;"></div>
+        </div>
+    </div>
+
+    <div id="notification-area"></div>
+
+    <script>
+        // --- GAME CONFIG & DATA ---
+        const SAVE_KEY = 'cookieTycoon_v2_save';
+        
+        let game = {
+            money: 0,
+            totalEarned: 0,
+            clickPower: 1,
+            autoIncome: 0,
+            startTime: Date.now(),
+            items: {
+                // Equipment (Tăng Click Power)
+                'rolling_pin': { id: 'rolling_pin', name: 'Cây Lăn Bột', type: 'equip', baseCost: 15, basePower: 1, count: 0, icon: '🥢' },
+                'oven_mitt': { id: 'oven_mitt', name: 'Găng Tay Bếp', type: 'equip', baseCost: 50, basePower: 3, count: 0, icon: '🧤' },
+                'oven': { id: 'oven', name: 'Lò Nướng Cũ', type: 'equip', baseCost: 150, basePower: 8, count: 0, icon: '🔥' },
+                'mixer': { id: 'mixer', name: 'Máy Trộn Bột', type: 'equip', baseCost: 500, basePower: 20, count: 0, icon: '🥣' },
+                'golden_spoon': { id: 'golden_spoon', name: 'Thìa Vàng', type: 'equip', baseCost: 1500, basePower: 50, count: 0, icon: '✨' },
+                'industrial_oven': { id: 'industrial_oven', name: 'Lò Công Nghiệp', type: 'equip', baseCost: 5000, basePower: 120, count: 0, icon: '🏭' },
+                'quantum_oven': { id: 'quantum_oven', name: 'Lò Lượng Tử', type: 'equip', baseCost: 50000, basePower: 500, count: 0, icon: '⚛️' },
+                
+                // Staff (Tăng Auto Income)
+                'cat': { id: 'cat', name: 'Mèo Thần Tài', type: 'staff', baseCost: 100, baseIncome: 1, count: 0, icon: '🐱' },
+                'grandma': { id: 'grandma', name: 'Bà Nội Trợ', type: 'staff', baseCost: 500, baseIncome: 5, count: 0, icon: '👵' },
+                'shipper': { id: 'shipper', name: 'Shipper', type: 'staff', baseCost: 2000, baseIncome: 15, count: 0, icon: '🛵' },
+                'baker': { id: 'baker', name: 'Thợ Bánh', type: 'staff', baseCost: 8000, baseIncome: 50, count: 0, icon: '👨‍🍳' },
+                'manager': { id: 'manager', name: 'Quản Lý', type: 'staff', baseCost: 30000, baseIncome: 150, count: 0, icon: '🤵' },
+                'robot': { id: 'robot', name: 'Robot Bánh', type: 'staff', baseCost: 100000, baseIncome: 400, count: 0, icon: '🤖' },
+                'alien': { id: 'alien', name: 'Người Ngoài Hành Tinh', type: 'staff', baseCost: 500000, baseIncome: 2000, count: 0, icon: '👽' }
+            }
+        };
+
+        const ranks = [
+            { limit: 0, title: "Gánh Hàng Rong" },
+            { limit: 1000, title: "Tiệm Bánh Nhỏ" },
+            { limit: 10000, title: "Cửa Hàng Phố" },
+            { limit: 50000, title: "Siêu Thị Bánh" },
+            { limit: 200000, title: "Chuỗi Cửa Hàng" },
+            { limit: 1000000, title: "Nhà Máy Bánh Kẹo" },
+            { limit: 10000000, title: "Tập Đoàn Quốc Tế" },
+            { limit: 100000000, title: "Đế Chế Bánh Quy" },
+            { limit: 1000000000, title: "Vua Bánh Kẹo Vũ Trụ" }
+        ];
+
+        // --- DOM REFERENCES ---
+        const moneyEl = document.getElementById('money');
+        const cpsEl = document.getElementById('cps');
+        const equipListEl = document.getElementById('equip-list');
+        const staffListEl = document.getElementById('staff-list');
+        const bakeryNameEl = document.getElementById('bakery-name');
+        const cookieBtn = document.getElementById('big-cookie');
+
+        // --- INIT ---
+        function init() {
+            loadGame();
+            renderShop();
+            updateUI();
+            
+            // Auto-save loop
+            setInterval(saveGame, 5000); // Save every 5s
+            
+            // Income loop
+            setInterval(() => {
+                if (game.autoIncome > 0) {
+                    addMoney(game.autoIncome);
+                }
+            }, 1000);
+
+            // Click Event
+            cookieBtn.addEventListener('mousedown', handleClick);
+            cookieBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // Prevent double firing
+                handleClick(e.touches[0]);
+            });
+        }
+
+        // --- CORE LOGIC ---
+        function handleClick(e) {
+            addMoney(game.clickPower);
+            spawnFloatingText(e.clientX, e.clientY, `+$${formatNumber(game.clickPower)}`);
+            
+            // Animation reset
+            cookieBtn.style.transform = "scale(0.95)";
+            setTimeout(() => cookieBtn.style.transform = "scale(1)", 50);
+        }
+
+        function addMoney(amount) {
+            game.money += amount;
+            game.totalEarned += amount;
+            updateUI();
+            checkRank();
+        }
+
+        function buyItem(id) {
+            const item = game.items[id];
+            const cost = getCost(item);
+
+            if (game.money >= cost) {
+                game.money -= cost;
+                item.count++;
+                
+                // Recalculate stats
+                if (item.type === 'equip') game.clickPower += item.basePower;
+                else game.autoIncome += item.baseIncome;
+
+                // Visual feedback
+                const btn = document.getElementById(`btn-${id}`);
+                btn.classList.add('purchased');
+                setTimeout(() => btn.classList.remove('purchased'), 300);
+
+                updateUI();
+                renderShop(); // Refresh prices/states
+                saveGame();
+            }
+        }
+
+        function getCost(item) {
+            return Math.floor(item.baseCost * Math.pow(1.15, item.count));
+        }
+
+        function checkRank() {
+            let currentTitle = ranks[0].title;
+            for (let r of ranks) {
+                if (game.totalEarned >= r.limit) currentTitle = r.title;
+            }
+            if (bakeryNameEl.innerText !== currentTitle) {
+                bakeryNameEl.innerText = currentTitle;
+                createToast(`🎉 Thăng hạng: ${currentTitle}!`);
+            }
+        }
+
+        // --- UI & RENDER ---
+        function updateUI() {
+            moneyEl.innerText = formatNumber(Math.floor(game.money));
+            cpsEl.innerText = formatNumber(game.autoIncome);
+            
+            // Check button states
+            for (let key in game.items) {
+                const item = game.items[key];
+                const btn = document.getElementById(`btn-${key}`);
+                if (btn) {
+                    const cost = getCost(item);
+                    if (game.money >= cost) btn.classList.remove('disabled');
+                    else btn.classList.add('disabled');
+                }
+            }
+        }
+
+        function renderShop() {
+            equipListEl.innerHTML = '';
+            staffListEl.innerHTML = '';
+
+            // Sort by cost to keep cheap items top
+            const sortedKeys = Object.keys(game.items).sort((a,b) => game.items[a].baseCost - game.items[b].baseCost);
+
+            for (let key of sortedKeys) {
+                const item = game.items[key];
+                const cost = getCost(item);
+                const desc = item.type === 'equip' ? `+${formatNumber(item.basePower)} Click` : `+${formatNumber(item.baseIncome)} $/s`;
+                
+                const html = `
+                    <div id="btn-${key}" class="upgrade-item ${game.money < cost ? 'disabled' : ''}" onclick="buyItem('${key}')">
+                        <div class="icon-box">${item.icon}</div>
+                        <div class="info">
+                            <div class="name">${item.name}</div>
+                            <div class="bonus">${desc}</div>
+                            <div class="cost-container">$${formatNumber(cost)}</div>
+                        </div>
+                        <div class="count-badge">${item.count}</div>
+                    </div>
+                `;
+
+                if (item.type === 'equip') equipListEl.innerHTML += html;
+                else staffListEl.innerHTML += html;
+            }
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.currentTarget.classList.add('active'); // Use currentTarget to target .tab div
+
+            if (tab === 'equip') {
+                equipListEl.style.display = 'block';
+                staffListEl.style.display = 'none';
+            } else {
+                equipListEl.style.display = 'none';
+                staffListEl.style.display = 'block';
+            }
+        }
+
+        // --- UTILS ---
+        function formatNumber(num) {
+            if (num >= 1000000000) return (num / 1000000000).toFixed(2) + 'B';
+            if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+            return num;
+        }
+
+        function spawnFloatingText(x, y, text) {
+            const el = document.createElement('div');
+            el.className = 'floating-text';
+            el.innerText = text;
+            
+            // Randomize slightly
+            const rx = x - 20 + Math.random() * 40;
+            const ry = y - 20 + Math.random() * 40;
+            
+            el.style.left = `${rx}px`;
+            el.style.top = `${ry}px`;
+            
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 800);
+        }
+
+        function createToast(msg) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = msg;
+            document.getElementById('notification-area').appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // --- DATA MANAGEMENT ---
+        function saveGame() {
+            const saveData = {
+                money: game.money,
+                totalEarned: game.totalEarned,
+                startTime: game.startTime,
+                items: {}
+            };
+            // Only save counts to save space
+            for (let key in game.items) {
+                saveData.items[key] = game.items[key].count;
+            }
+            localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+        }
+
+        function loadGame() {
+            const saved = localStorage.getItem(SAVE_KEY);
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    game.money = data.money || 0;
+                    game.totalEarned = data.totalEarned || 0;
+                    game.startTime = data.startTime || Date.now();
+                    
+                    // Rebuild stats from counts
+                    game.clickPower = 1;
+                    game.autoIncome = 0;
+
+                    for (let key in game.items) {
+                        if (data.items && data.items[key] !== undefined) {
+                            const count = data.items[key];
+                            game.items[key].count = count;
+                            
+                            // Add stats
+                            if (game.items[key].type === 'equip') {
+                                game.clickPower += (game.items[key].basePower * count);
+                            } else {
+                                game.autoIncome += (game.items[key].baseIncome * count);
+                            }
+                        }
+                    }
+                    checkRank();
+                } catch (e) {
+                    console.error("Save file corrupted, resetting.");
+                    resetData();
+                }
+            }
+        }
+
+        function resetData() {
+            if (confirm("⚠️ BẠN CÓ CHẮC KHÔNG?\n\nHành động này sẽ xóa toàn bộ tiền và nâng cấp của bạn để chơi lại từ đầu.")) {
+                localStorage.removeItem(SAVE_KEY);
+                location.reload();
+            }
+        }
+
+        // Start
+        init();
+
+    </script>
+</body>
+</html>

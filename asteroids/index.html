@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Asteroids Classic Mobile</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden; /* Ngăn cuộn trang */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+            touch-action: none; /* Quan trọng: Ngăn hành vi mặc định của trình duyệt */
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        canvas {
+            border: 2px solid #fff;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+            display: block;
+            background-color: #000;
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .score {
+            font-size: 24px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 5px #fff;
+        }
+
+        .lives {
+            font-size: 20px;
+            color: #aaa;
+        }
+
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            display: none;
+            z-index: 20;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 40px;
+            border: 2px solid #fff;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 400px;
+        }
+
+        h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            text-shadow: 0 0 10px #fff;
+        }
+
+        button {
+            background: transparent;
+            color: #fff;
+            border: 2px solid #fff;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-family: inherit;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            font-weight: bold;
+            border-radius: 5px;
+        }
+
+        button:active {
+            background: #fff;
+            color: #000;
+            transform: scale(0.95);
+        }
+
+        #controls-hint {
+            position: absolute;
+            bottom: 20px;
+            text-align: center;
+            width: 100%;
+            color: #aaa;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Mobile Controls Overlay */
+        #mobile-controls {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Để canvas nhận sự kiện click nếu cần, nhưng các nút con sẽ auto */
+            z-index: 15;
+            display: none; /* Mặc định ẩn, hiện bằng JS trên mobile */
+        }
+
+        /* Joystick Zone (Left) */
+        #joystick-zone {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 150px;
+            height: 150px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            pointer-events: auto;
+            touch-action: none;
+        }
+
+        #joystick-knob {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        /* Fire Button (Right) */
+        #fire-btn {
+            position: absolute;
+            bottom: 40px;
+            right: 40px;
+            width: 90px;
+            height: 90px;
+            background: rgba(255, 0, 0, 0.2);
+            border: 3px solid rgba(255, 50, 50, 0.5);
+            border-radius: 50%;
+            pointer-events: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.7);
+            touch-action: none;
+        }
+
+        #fire-btn:active {
+            background: rgba(255, 0, 0, 0.5);
+            transform: scale(0.95);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            #controls-hint { display: none; }
+            #mobile-controls { display: block; }
+            h1 { font-size: 32px; }
+            #game-over { padding: 20px; }
+            button { padding: 12px 30px; font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <div class="score">ĐIỂM: <span id="scoreVal">0</span></div>
+        <div class="lives">MẠNG: <span id="livesVal">3</span></div>
+    </div>
+
+    <div id="game-over">
+        <h1>GAME OVER</h1>
+        <p>Điểm của bạn: <span id="finalScore">0</span></p>
+        <button onclick="resetGame()">Chơi Lại</button>
+    </div>
+
+    <div id="controls-hint">
+        Di chuyển: Mũi tên / WASD • Bắn: Space
+    </div>
+
+    <!-- Mobile Controls -->
+    <div id="mobile-controls">
+        <div id="joystick-zone">
+            <div id="joystick-knob"></div>
+        </div>
+        <div id="fire-btn">FIRE</div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Cấu hình game
+        const FPS = 60;
+        const SHIP_SIZE = 30; 
+        const TURN_SPEED = 360; 
+        const THRUST = 5; 
+        const FRICTION = 0.7; 
+        const ROID_NUM = 3; 
+        const ROID_SIZE = 100; 
+        const ROID_SPD = 50; 
+        const ROID_VERT = 10; 
+        const ROID_JAG = 0.4; 
+        const LASER_MAX = 10; 
+        const LASER_SPD = 500; 
+        const LASER_DIST = 0.6; 
+        const LASER_EXPLODE_DUR = 0.1; 
+        const SHIP_EXPLODE_DUR = 0.3; 
+        const SHIP_INV_DUR = 3; 
+        const SHIP_BLINK_DUR = 0.1; 
+
+        // Biến toàn cục
+        let ship, asteroids, lasers, score, lives, text, textAlpha;
+        let level = 0;
+        let highScore = localStorage.getItem('asteroids_highscore') || 0;
+
+        // Joystick variables
+        let joystick = { active: false, x: 0, y: 0, originX: 0, originY: 0, maxDist: 50 };
+        const joystickZone = document.getElementById('joystick-zone');
+        const joystickKnob = document.getElementById('joystick-knob');
+        const fireBtn = document.getElementById('fire-btn');
+
+        // Loop game
+        setInterval(update, 1000 / FPS);
+
+        // Xử lý đầu vào Bàn phím
+        document.addEventListener('keydown', keyDown);
+        document.addEventListener('keyup', keyUp);
+
+        // --- XỬ LÝ CẢM ỨNG (MOBILE) ---
+
+        // Fire Button
+        fireBtn.addEventListener('touchstart', (e) => { 
+            e.preventDefault(); 
+            keyDown({ keyCode: 32 }); // Giả lập phím Space
+            fireBtn.style.backgroundColor = "rgba(255, 0, 0, 0.5)";
+        });
+        fireBtn.addEventListener('touchend', (e) => { 
+            e.preventDefault(); 
+            keyUp({ keyCode: 32 }); 
+            fireBtn.style.backgroundColor = "rgba(255, 0, 0, 0.2)";
+        });
+
+        // Joystick Logic
+        joystickZone.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.changedTouches[0];
+            const rect = joystickZone.getBoundingClientRect();
+            // Lấy tâm của vùng joystick làm gốc
+            joystick.originX = rect.left + rect.width / 2;
+            joystick.originY = rect.top + rect.height / 2;
+            joystick.active = true;
+            updateJoystick(touch.clientX, touch.clientY);
+        });
+
+        joystickZone.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (joystick.active) {
+                const touch = e.changedTouches[0];
+                updateJoystick(touch.clientX, touch.clientY);
+            }
+        });
+
+        joystickZone.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            resetJoystick();
+        });
+
+        function updateJoystick(clientX, clientY) {
+            let dx = clientX - joystick.originX;
+            let dy = clientY - joystick.originY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // Giới hạn khoảng cách di chuyển của knob
+            if (distance > joystick.maxDist) {
+                const angle = Math.atan2(dy, dx);
+                dx = Math.cos(angle) * joystick.maxDist;
+                dy = Math.sin(angle) * joystick.maxDist;
+            }
+
+            // Di chuyển hình ảnh knob
+            joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+            // Chuyển đổi vị trí joystick thành điều khiển tàu
+            // Ngưỡng chết (deadzone) là 10px để tránh trôi
+            if (distance > 10) {
+                // Xoay: Dựa trên trục X (trái/phải)
+                if (dx < -15) {
+                    ship.rot = TURN_SPEED / 180 * Math.PI / FPS; // Trái
+                } else if (dx > 15) {
+                    ship.rot = -TURN_SPEED / 180 * Math.PI / FPS; // Phải
+                } else {
+                    ship.rot = 0;
+                }
+
+                // Đẩy: Dựa trên trục Y (lên)
+                if (dy < -15) {
+                    ship.thrusting = true;
+                } else {
+                    ship.thrusting = false;
+                }
+            } else {
+                ship.rot = 0;
+                ship.thrusting = false;
+            }
+        }
+
+        function resetJoystick() {
+            joystick.active = false;
+            joystickKnob.style.transform = `translate(-50%, -50%)`;
+            ship.rot = 0;
+            ship.thrusting = false;
+        }
+
+        // --- HẾT XỬ LÝ CẢM ỨNG ---
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function newGame() {
+            score = 0;
+            lives = 3;
+            level = 0;
+            ship = newShip();
+            newLevel();
+            document.getElementById('game-over').style.display = 'none';
+            document.getElementById('scoreVal').innerText = score;
+            document.getElementById('livesVal').innerText = lives;
+        }
+
+        function newLevel() {
+            text = "Cấp độ " + (level + 1);
+            textAlpha = 1.0;
+            createAsteroids();
+        }
+
+        function resetGame() {
+            newGame();
+        }
+
+        function newShip() {
+            return {
+                x: canvas.width / 2,
+                y: canvas.height / 2,
+                a: 90 / 180 * Math.PI, 
+                r: SHIP_SIZE / 2,
+                blinkNum: Math.ceil(SHIP_INV_DUR / SHIP_BLINK_DUR),
+                blinkTime: Math.ceil(SHIP_BLINK_DUR * FPS),
+                canShoot: true,
+                dead: false,
+                explodeTime: 0,
+                lasers: [],
+                rot: 0,
+                thrusting: false,
+                thrust: { x: 0, y: 0 }
+            };
+        }
+
+        function createAsteroids() {
+            asteroids = [];
+            let x, y;
+            for (let i = 0; i < ROID_NUM + level; i++) {
+                do {
+                    x = Math.floor(Math.random() * canvas.width);
+                    y = Math.floor(Math.random() * canvas.height);
+                } while (distBetweenPoints(ship.x, ship.y, x, y) < ROID_SIZE * 2 + ship.r);
+                asteroids.push(newAsteroid(x, y, Math.ceil(ROID_SIZE / 2)));
+            }
+        }
+
+        function newAsteroid(x, y, r) {
+            let lvlMult = 1 + 0.1 * level;
+            let roid = {
+                x: x,
+                y: y,
+                xv: Math.random() * ROID_SPD * lvlMult / FPS * (Math.random() < 0.5 ? 1 : -1),
+                yv: Math.random() * ROID_SPD * lvlMult / FPS * (Math.random() < 0.5 ? 1 : -1),
+                r: r,
+                a: Math.random() * Math.PI * 2, 
+                vert: Math.floor(Math.random() * (ROID_VERT + 1) + ROID_VERT / 2),
+                offs: []
+            };
+
+            for (let i = 0; i < roid.vert; i++) {
+                roid.offs.push(Math.random() * ROID_JAG * 2 + 1 - ROID_JAG);
+            }
+
+            return roid;
+        }
+
+        function keyDown(ev) {
+            if (ship.dead) return;
+
+            switch(ev.keyCode) {
+                case 32: // Space (shoot)
+                    shootLaser();
+                    break;
+                case 37: // Left
+                case 65: // A
+                    ship.rot = TURN_SPEED / 180 * Math.PI / FPS;
+                    break;
+                case 38: // Up
+                case 87: // W
+                    ship.thrusting = true;
+                    break;
+                case 39: // Right
+                case 68: // D
+                    ship.rot = -TURN_SPEED / 180 * Math.PI / FPS;
+                    break;
+            }
+        }
+
+        function keyUp(ev) {
+            if (ship.dead) return;
+
+            switch(ev.keyCode) {
+                case 32: 
+                    ship.canShoot = true;
+                    break;
+                case 37: 
+                case 65: 
+                    ship.rot = 0;
+                    break;
+                case 38: 
+                case 87: 
+                    ship.thrusting = false;
+                    break;
+                case 39: 
+                case 68: 
+                    ship.rot = 0;
+                    break;
+            }
+        }
+
+        function shootLaser() {
+            if (ship.canShoot && ship.lasers.length < LASER_MAX) {
+                ship.lasers.push({ 
+                    x: ship.x + 4 / 3 * ship.r * Math.cos(ship.a),
+                    y: ship.y - 4 / 3 * ship.r * Math.sin(ship.a),
+                    xv: LASER_SPD * Math.cos(ship.a) / FPS,
+                    yv: -LASER_SPD * Math.sin(ship.a) / FPS,
+                    dist: 0,
+                    explodeTime: 0
+                });
+            }
+            ship.canShoot = false;
+        }
+
+        function distBetweenPoints(x1, y1, x2, y2) {
+            return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+        }
+
+        function explodeShip() {
+            ship.explodeTime = Math.ceil(SHIP_EXPLODE_DUR * FPS);
+        }
+
+        function gameOver() {
+            ship.dead = true;
+            document.getElementById('finalScore').innerText = score;
+            document.getElementById('game-over').style.display = 'block';
+        }
+
+        function destroyAsteroid(index) {
+            let x = asteroids[index].x;
+            let y = asteroids[index].y;
+            let r = asteroids[index].r;
+
+            if (r == Math.ceil(ROID_SIZE / 2)) { 
+                asteroids.push(newAsteroid(x, y, Math.ceil(ROID_SIZE / 4)));
+                asteroids.push(newAsteroid(x, y, Math.ceil(ROID_SIZE / 4)));
+                score += 20;
+            } else if (r == Math.ceil(ROID_SIZE / 4)) { 
+                asteroids.push(newAsteroid(x, y, Math.ceil(ROID_SIZE / 8)));
+                asteroids.push(newAsteroid(x, y, Math.ceil(ROID_SIZE / 8)));
+                score += 50;
+            } else { 
+                score += 100;
+            }
+
+            asteroids.splice(index, 1);
+            
+            if (asteroids.length === 0) {
+                level++;
+                newLevel();
+            }
+
+            document.getElementById('scoreVal').innerText = score;
+        }
+
+        function update() {
+            let blinkOn = ship.blinkNum % 2 == 0;
+            let exploding = ship.explodeTime > 0;
+
+            // Background
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Asteroids
+            ctx.lineWidth = SHIP_SIZE / 20;
+            let x, y, r, a, vert, offs;
+            for (let i = 0; i < asteroids.length; i++) {
+                ctx.strokeStyle = "slategray";
+                x = asteroids[i].x;
+                y = asteroids[i].y;
+                r = asteroids[i].r;
+                a = asteroids[i].a;
+                vert = asteroids[i].vert;
+                offs = asteroids[i].offs;
+
+                ctx.beginPath();
+                for (let j = 0; j < vert; j++) {
+                    ctx.lineTo(
+                        x + r * offs[j] * Math.cos(a + j * Math.PI * 2 / vert),
+                        y + r * offs[j] * Math.sin(a + j * Math.PI * 2 / vert)
+                    );
+                }
+                ctx.closePath();
+                ctx.stroke();
+
+                asteroids[i].x += asteroids[i].xv;
+                asteroids[i].y += asteroids[i].yv;
+
+                // Wrap asteroids
+                if (asteroids[i].x < 0 - asteroids[i].r) asteroids[i].x = canvas.width + asteroids[i].r;
+                else if (asteroids[i].x > canvas.width + asteroids[i].r) asteroids[i].x = 0 - asteroids[i].r;
+                if (asteroids[i].y < 0 - asteroids[i].r) asteroids[i].y = canvas.height + asteroids[i].r;
+                else if (asteroids[i].y > canvas.height + asteroids[i].r) asteroids[i].y = 0 - asteroids[i].r;
+            }
+
+            // Ship Thrust
+            if (ship.thrusting && !ship.dead) {
+                ship.thrust.x += THRUST * Math.cos(ship.a) / FPS;
+                ship.thrust.y -= THRUST * Math.sin(ship.a) / FPS;
+
+                // Draw Thruster
+                if (!exploding && blinkOn) {
+                    ctx.fillStyle = "orange";
+                    ctx.strokeStyle = "yellow";
+                    ctx.lineWidth = SHIP_SIZE / 10;
+                    ctx.beginPath();
+                    ctx.moveTo( 
+                        ship.x - ship.r * (2 / 3 * Math.cos(ship.a) + 0.5 * Math.sin(ship.a)),
+                        ship.y + ship.r * (2 / 3 * Math.sin(ship.a) - 0.5 * Math.cos(ship.a))
+                    );
+                    ctx.lineTo( 
+                        ship.x - ship.r * 6 / 3 * Math.cos(ship.a),
+                        ship.y + ship.r * 6 / 3 * Math.sin(ship.a)
+                    );
+                    ctx.lineTo( 
+                        ship.x - ship.r * (2 / 3 * Math.cos(ship.a) - 0.5 * Math.sin(ship.a)),
+                        ship.y + ship.r * (2 / 3 * Math.sin(ship.a) + 0.5 * Math.cos(ship.a))
+                    );
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                }
+            } else {
+                ship.thrust.x -= FRICTION * ship.thrust.x / FPS;
+                ship.thrust.y -= FRICTION * ship.thrust.y / FPS;
+            }
+
+            // Draw Ship
+            if (!exploding) {
+                if (blinkOn && !ship.dead) {
+                    ctx.strokeStyle = "white";
+                    ctx.lineWidth = SHIP_SIZE / 20;
+                    ctx.beginPath();
+                    ctx.moveTo( 
+                        ship.x + 4 / 3 * ship.r * Math.cos(ship.a),
+                        ship.y - 4 / 3 * ship.r * Math.sin(ship.a)
+                    );
+                    ctx.lineTo( 
+                        ship.x - ship.r * (2 / 3 * Math.cos(ship.a) + Math.sin(ship.a)),
+                        ship.y + ship.r * (2 / 3 * Math.sin(ship.a) - Math.cos(ship.a))
+                    );
+                    ctx.lineTo( 
+                        ship.x - ship.r * (2 / 3 * Math.cos(ship.a) - Math.sin(ship.a)),
+                        ship.y + ship.r * (2 / 3 * Math.sin(ship.a) + Math.cos(ship.a))
+                    );
+                    ctx.closePath();
+                    ctx.stroke();
+                }
+
+                if (ship.blinkNum > 0) {
+                    ship.blinkTime--;
+                    if (ship.blinkTime == 0) {
+                        ship.blinkTime = Math.ceil(SHIP_BLINK_DUR * FPS);
+                        ship.blinkNum--;
+                    }
+                }
+            } else {
+                // Explosion
+                ctx.fillStyle = "darkred";
+                ctx.beginPath();
+                ctx.arc(ship.x, ship.y, ship.r * 1.7, 0, Math.PI * 2, false);
+                ctx.fill();
+                ctx.fillStyle = "red";
+                ctx.beginPath();
+                ctx.arc(ship.x, ship.y, ship.r * 1.4, 0, Math.PI * 2, false);
+                ctx.fill();
+                ctx.fillStyle = "orange";
+                ctx.beginPath();
+                ctx.arc(ship.x, ship.y, ship.r * 1.1, 0, Math.PI * 2, false);
+                ctx.fill();
+                ctx.fillStyle = "yellow";
+                ctx.beginPath();
+                ctx.arc(ship.x, ship.y, ship.r * 0.8, 0, Math.PI * 2, false);
+                ctx.fill();
+                ctx.fillStyle = "white";
+                ctx.beginPath();
+                ctx.arc(ship.x, ship.y, ship.r * 0.5, 0, Math.PI * 2, false);
+                ctx.fill();
+            }
+
+            // Lasers
+            for (let i = 0; i < ship.lasers.length; i++) {
+                if (ship.lasers[i].explodeTime == 0) {
+                    ctx.fillStyle = "salmon";
+                    ctx.beginPath();
+                    ctx.arc(ship.lasers[i].x, ship.lasers[i].y, SHIP_SIZE / 15, 0, Math.PI * 2, false);
+                    ctx.fill();
+                } else {
+                    ctx.fillStyle = "orangered";
+                    ctx.beginPath();
+                    ctx.arc(ship.lasers[i].x, ship.lasers[i].y, ship.r * 0.75, 0, Math.PI * 2, false);
+                    ctx.fill();
+                    ctx.fillStyle = "salmon";
+                    ctx.beginPath();
+                    ctx.arc(ship.lasers[i].x, ship.lasers[i].y, ship.r * 0.5, 0, Math.PI * 2, false);
+                    ctx.fill();
+                    ctx.fillStyle = "pink";
+                    ctx.beginPath();
+                    ctx.arc(ship.lasers[i].x, ship.lasers[i].y, ship.r * 0.25, 0, Math.PI * 2, false);
+                    ctx.fill();
+                }
+            }
+
+            // Laser collisions
+            let ax, ay, ar, lx, ly;
+            for (let i = asteroids.length - 1; i >= 0; i--) {
+                ax = asteroids[i].x;
+                ay = asteroids[i].y;
+                ar = asteroids[i].r;
+
+                for (let j = ship.lasers.length - 1; j >= 0; j--) {
+                    lx = ship.lasers[j].x;
+                    ly = ship.lasers[j].y;
+
+                    if (ship.lasers[j].explodeTime == 0 && distBetweenPoints(ax, ay, lx, ly) < ar) {
+                        destroyAsteroid(i);
+                        ship.lasers[j].explodeTime = Math.ceil(LASER_EXPLODE_DUR * FPS);
+                        break;
+                    }
+                }
+            }
+
+            // Ship collisions
+            if (!exploding) {
+                if (ship.blinkNum == 0 && !ship.dead) {
+                    for (let i = 0; i < asteroids.length; i++) {
+                        if (distBetweenPoints(ship.x, ship.y, asteroids[i].x, asteroids[i].y) < ship.r + asteroids[i].r) {
+                            explodeShip();
+                            destroyAsteroid(i);
+                            break;
+                        }
+                    }
+                }
+
+                ship.a += ship.rot;
+                ship.x += ship.thrust.x;
+                ship.y += ship.thrust.y;
+            } else {
+                ship.explodeTime--;
+                if (ship.explodeTime == 0) {
+                    lives--;
+                    document.getElementById('livesVal').innerText = lives;
+                    if (lives == 0) {
+                        gameOver();
+                    } else {
+                        ship = newShip();
+                    }
+                }
+            }
+
+            // Wrap Ship
+            if (ship.x < 0 - ship.r) ship.x = canvas.width + ship.r;
+            else if (ship.x > canvas.width + ship.r) ship.x = 0 - ship.r;
+            if (ship.y < 0 - ship.r) ship.y = canvas.height + ship.r;
+            else if (ship.y > canvas.height + ship.r) ship.y = 0 - ship.r;
+
+            // Move Lasers
+            for (let i = ship.lasers.length - 1; i >= 0; i--) {
+                if (ship.lasers[i].dist > LASER_DIST * canvas.width) {
+                    ship.lasers.splice(i, 1);
+                    continue;
+                }
+
+                if (ship.lasers[i].explodeTime > 0) {
+                    ship.lasers[i].explodeTime--;
+                    if (ship.lasers[i].explodeTime == 0) {
+                        ship.lasers.splice(i, 1);
+                        continue;
+                    }
+                } else {
+                    ship.lasers[i].x += ship.lasers[i].xv;
+                    ship.lasers[i].y += ship.lasers[i].yv;
+                    ship.lasers[i].dist += Math.sqrt(Math.pow(ship.lasers[i].xv, 2) + Math.pow(ship.lasers[i].yv, 2));
+                }
+
+                if (ship.lasers[i].x < 0) ship.lasers[i].x = canvas.width;
+                else if (ship.lasers[i].x > canvas.width) ship.lasers[i].x = 0;
+                if (ship.lasers[i].y < 0) ship.lasers[i].y = canvas.height;
+                else if (ship.lasers[i].y > canvas.height) ship.lasers[i].y = 0;
+            }
+            
+            // Level text
+            if (textAlpha >= 0) {
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = "rgba(255, 255, 255, " + textAlpha + ")";
+                ctx.font = "small-caps 40px Courier New";
+                ctx.fillText(text, canvas.width / 2, canvas.height * 0.75);
+                textAlpha -= (1.0 / FPS / 2.0);
+            }
+        }
+
+        // Start
+        newGame();
+
+    </script>
+</body>
+</html>

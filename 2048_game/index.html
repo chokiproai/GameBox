@@ -1,113 +1,764 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="vi">
 <head>
   <meta charset="utf-8">
-  <title>2048</title>
-
-  <link href="style/main.css" rel="stylesheet" type="text/css">
-  <link rel="shortcut icon" href="favicon.ico">
-  <link rel="apple-touch-icon" href="meta/apple-touch-icon.png">
-  <link rel="apple-touch-startup-image" href="meta/apple-touch-startup-image-640x1096.png"
-    media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)"> <!-- iPhone 5+ -->
-  <link rel="apple-touch-startup-image" href="meta/apple-touch-startup-image-640x920.png"
-    media="(device-width: 320px) and (device-height: 480px) and (-webkit-device-pixel-ratio: 2)">
-  <!-- iPhone, retina -->
+  <title>2048 Classic Mobile</title>
+  
+  <!-- Quan trọng cho Mobile: Ngăn zoom và đảm bảo tỷ lệ chuẩn -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  
+  <!-- Ngăn chặn hành vi mặc định của iOS khi thêm vào màn hình chính -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-  <meta name="HandheldFriendly" content="True">
-  <meta name="MobileOptimized" content="320">
-  <meta name="viewport"
-    content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0, maximum-scale=1, user-scalable=no, minimal-ui">
+  <style>
+    :root {
+      --bg-color: #faf8ef;
+      --grid-color: #bbada0;
+      --empty-tile: rgba(238, 228, 218, 0.35);
+      --text-color: #776e65;
+      --bright-text: #f9f6f2;
+      --font-family: "Clear Sans", "Helvetica Neue", Arial, sans-serif;
+      
+      /* Classic Colors */
+      --tile-2-bg: #eee4da; --tile-2-text: #776e65;
+      --tile-4-bg: #ede0c8; --tile-4-text: #776e65;
+      --tile-8-bg: #f2b179; --tile-8-text: #f9f6f2;
+      --tile-16-bg: #f59563; --tile-16-text: #f9f6f2;
+      --tile-32-bg: #f67c5f; --tile-32-text: #f9f6f2;
+      --tile-64-bg: #f65e3b; --tile-64-text: #f9f6f2;
+      --tile-128-bg: #edcf72; --tile-128-text: #f9f6f2;
+      --tile-256-bg: #edcc61; --tile-256-text: #f9f6f2;
+      --tile-512-bg: #edc850; --tile-512-text: #f9f6f2;
+      --tile-1024-bg: #edc53f; --tile-1024-text: #f9f6f2;
+      --tile-2048-bg: #edc22e; --tile-2048-text: #f9f6f2;
+      --tile-super-bg: #3c3a32; --tile-super-text: #f9f6f2;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-color);
+      color: var(--text-color);
+      font-family: var(--font-family);
+      overflow: hidden; /* Ngăn cuộn trang toàn bộ body */
+      height: 100%;
+      width: 100%;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none; /* Ngăn chặn các cử chỉ mặc định của trình duyệt */
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      width: 500px;
+      max-width: 95vw; /* Tăng độ rộng trên mobile */
+      margin: 0 auto;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+    .heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    h1.title {
+      font-size: 60px;
+      font-weight: 700;
+      margin: 0;
+      color: var(--text-color);
+      line-height: 1;
+    }
+
+    .scores-container {
+      display: flex;
+      gap: 5px;
+    }
+
+    .score-box {
+      position: relative;
+      background: var(--grid-color);
+      padding: 5px 15px;
+      border-radius: 3px;
+      text-align: center;
+      min-width: 50px;
+    }
+
+    .score-label {
+      color: #eee4da;
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: bold;
+      margin-bottom: 2px;
+    }
+
+    .score-value {
+      font-size: 20px;
+      font-weight: bold;
+      color: #fff;
+      line-height: 25px;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 10px;
+    }
+
+    .restart-button {
+      background: #8f7a66;
+      border-radius: 3px;
+      padding: 0 20px;
+      text-decoration: none;
+      color: #f9f6f2;
+      height: 40px;
+      line-height: 40px;
+      font-weight: bold;
+      cursor: pointer;
+      text-align: center;
+      border: none;
+      font-size: 18px;
+      transition: background 0.1s;
+      -webkit-tap-highlight-color: transparent; /* Xóa highlight khi tap trên mobile */
+    }
+
+    .restart-button:active {
+        background: #9f8b77;
+        transform: scale(0.98);
+    }
+
+    .game-container {
+      position: relative;
+      padding: 15px;
+      background: var(--grid-color);
+      border-radius: 6px;
+      width: 100%;
+      aspect-ratio: 1;
+      box-sizing: border-box;
+      touch-action: none; /* Quan trọng: Ngăn trình duyệt xử lý touch trên vùng game */
+    }
+
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      gap: 15px;
+      width: 100%;
+      height: 100%;
+    }
+
+    .grid-cell {
+      background: var(--empty-tile);
+      border-radius: 3px;
+      width: 100%;
+      height: 100%;
+    }
+
+    .tile-container {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      right: 15px;
+      bottom: 15px;
+      z-index: 2;
+      pointer-events: none; /* Để touch event xuyên qua xuống game-container */
+    }
+
+    .tile {
+      position: absolute;
+      width: calc(25% - 11.25px);
+      height: calc(25% - 11.25px);
+      border-radius: 3px;
+      transition: transform 150ms cubic-bezier(0.2, 0.9, 0.3, 1);
+      z-index: 10;
+      will-change: transform; /* Tối ưu hiệu năng render */
+    }
+
+    .tile-inner {
+      width: 100%;
+      height: 100%;
+      border-radius: 3px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 55px;
+      font-weight: bold;
+      box-shadow: none; 
+    }
+
+    /* Classic Tile Colors */
+    .tile-2 .tile-inner { background: var(--tile-2-bg); color: var(--tile-2-text); }
+    .tile-4 .tile-inner { background: var(--tile-4-bg); color: var(--tile-4-text); }
+    .tile-8 .tile-inner { background: var(--tile-8-bg); color: var(--tile-8-text); }
+    .tile-16 .tile-inner { background: var(--tile-16-bg); color: var(--tile-16-text); }
+    .tile-32 .tile-inner { background: var(--tile-32-bg); color: var(--tile-32-text); }
+    .tile-64 .tile-inner { background: var(--tile-64-bg); color: var(--tile-64-text); }
+    .tile-128 .tile-inner { background: var(--tile-128-bg); color: var(--tile-128-text); font-size: 45px; box-shadow: 0 0 30px 10px rgba(243, 215, 116, 0.2381), inset 0 0 0 1px rgba(255, 255, 255, 0.14286); }
+    .tile-256 .tile-inner { background: var(--tile-256-bg); color: var(--tile-256-text); font-size: 45px; box-shadow: 0 0 30px 10px rgba(243, 215, 116, 0.31746), inset 0 0 0 1px rgba(255, 255, 255, 0.19048); }
+    .tile-512 .tile-inner { background: var(--tile-512-bg); color: var(--tile-512-text); font-size: 45px; box-shadow: 0 0 30px 10px rgba(243, 215, 116, 0.39683), inset 0 0 0 1px rgba(255, 255, 255, 0.2381); }
+    .tile-1024 .tile-inner { background: var(--tile-1024-bg); color: var(--tile-1024-text); font-size: 35px; box-shadow: 0 0 30px 10px rgba(243, 215, 116, 0.47619), inset 0 0 0 1px rgba(255, 255, 255, 0.28571); }
+    .tile-2048 .tile-inner { background: var(--tile-2048-bg); color: var(--tile-2048-text); font-size: 35px; box-shadow: 0 0 30px 10px rgba(243, 215, 116, 0.55556), inset 0 0 0 1px rgba(255, 255, 255, 0.33333); }
+    .tile-super .tile-inner { background: var(--tile-super-bg); color: var(--tile-super-text); font-size: 30px; }
+
+    /* Animations */
+    .tile-new .tile-inner { animation: appear 200ms ease 100ms backwards; }
+    .tile-merged .tile-inner { animation: pop 200ms ease 100ms backwards; z-index: 20; }
+
+    @keyframes appear {
+      0% { opacity: 0; transform: scale(0); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes pop {
+      0% { transform: scale(0); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+
+    .game-message {
+      display: none;
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      background: rgba(238, 228, 218, 0.73);
+      z-index: 100;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      animation: fade-in 800ms ease 1200ms backwards;
+      border-radius: 3px;
+    }
+
+    .game-message p {
+      font-size: 60px;
+      font-weight: bold;
+      margin: 0 0 20px 0;
+      color: #776e65;
+    }
+
+    .game-message.game-won {
+        background: rgba(237, 194, 46, 0.5);
+        color: #f9f6f2;
+    }
+    
+    .game-message.game-won p {
+        color: #f9f6f2;
+    }
+
+    .game-message.show {
+      display: flex;
+    }
+
+    .retry-button {
+      background: #8f7a66;
+      color: #f9f6f2;
+      padding: 0 20px;
+      height: 40px;
+      line-height: 40px;
+      border-radius: 3px;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+      font-size: 18px;
+    }
+
+    @keyframes fade-in {
+      0% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+
+    /* Mobile adjustments */
+    @media screen and (max-width: 520px) {
+      .container { 
+        width: 100%; 
+        padding: 15px; 
+      }
+      
+      .heading {
+        margin-bottom: 15px;
+      }
+
+      .tile-inner { font-size: 35px; }
+      
+      h1.title { font-size: 40px; }
+      
+      .game-container { padding: 10px; margin-top: 0; }
+      
+      .grid-container { gap: 10px; }
+      
+      .tile-container { top: 10px; left: 10px; right: 10px; bottom: 10px; }
+      
+      .tile {
+          width: calc(25% - 7.5px);
+          height: calc(25% - 7.5px);
+      }
+      
+      .restart-button {
+        padding: 0 15px;
+        font-size: 16px;
+      }
+    }
+  </style>
 </head>
-
 <body>
+
   <div class="container">
     <div class="heading">
       <h1 class="title">2048</h1>
       <div class="scores-container">
-        <div class="score-container">0</div>
-        <div class="best-container">0</div>
+        <div class="score-box">
+          <div class="score-label">ĐIỂM</div>
+          <div class="score-value" id="score">0</div>
+        </div>
+        <div class="score-box">
+          <div class="score-label">KỶ LỤC</div>
+          <div class="score-value" id="best-score">0</div>
+        </div>
       </div>
     </div>
 
-    <div class="above-game">
-      <p class="game-intro">Join the numbers and get to the <strong>2048 tile!</strong></p>
-      <a class="restart-button">New Game</a>
+    <div class="controls">
+      <button class="restart-button" onclick="game.restart()">Chơi Mới</button>
     </div>
 
     <div class="game-container">
-      <div class="game-message">
-        <p></p>
-        <div class="lower">
-          <a class="keep-playing-button">Keep going</a>
-          <a class="retry-button">Try again</a>
-        </div>
+      <div class="game-message" id="game-message">
+        <p id="game-message-text"></p>
+        <button class="retry-button" onclick="game.restart()">Thử Lại</button>
       </div>
 
-      <div class="grid-container">
-        <div class="grid-row">
-          <div class="grid-cell"></div>
-          <div class="grid-cell"></div>
-          <div class="grid-cell"></div>
-          <div class="grid-cell"></div>
-        </div>
-        <div class="grid-row">
-          <div class="grid-cell"></div>
-          <div class="grid-cell"></div>
-          <div class="grid-cell"></div>
-          <div class="grid-cell"></div>
-        </div>
-        <div class="grid-row">
-          <div class="grid-cell"></div>
-          <div class="grid-cell"></div>
-          <div class="grid-cell"></div>
-          <div class="grid-cell"></div>
-        </div>
-        <div class="grid-row">
-          <div class="grid-cell"></div>
-          <div class="grid-cell"></div>
-          <div class="grid-cell"></div>
-          <div class="grid-cell"></div>
-        </div>
+      <div class="grid-container" id="grid-container">
+        <!-- 16 grid cells -->
+        <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+        <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+        <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
+        <div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div><div class="grid-cell"></div>
       </div>
 
-      <div class="tile-container">
-
+      <div class="tile-container" id="tile-container">
+        <!-- Tiles will be injected here -->
       </div>
     </div>
-
-    <p class="game-explanation">
-      <strong class="important">How to play:</strong> Use your <strong>arrow keys</strong> to move the tiles. When two
-      tiles with the same number touch, they <strong>merge into one!</strong>
-    </p>
-    <hr>
-    <p>
-      <strong class="important">Note:</strong> This site is the official version of 2048. You can play it on your phone
-      via <a href="http://git.io/2048">http://git.io/2048.</a> All other apps or sites are derivatives or fakes, and
-      should be used with caution.
-    </p>
-    <hr>
-    <p>
-      Created by <a href="http://gabrielecirulli.com" target="_blank">Gabriele Cirulli.</a> Based on <a
-        href="https://itunes.apple.com/us/app/1024!/id823499224" target="_blank">1024 by Veewo Studio</a> and
-      conceptually similar to <a href="http://asherv.com/threes/" target="_blank">Threes by Asher Vollmer.</a>
-    </p>
   </div>
 
-  <script src="js/bind_polyfill.js"></script>
-  <script src="js/classlist_polyfill.js"></script>
-  <script src="js/animframe_polyfill.js"></script>
-  <script src="js/keyboard_input_manager.js"></script>
-  <script src="js/html_actuator.js"></script>
-  <script src="js/grid.js"></script>
-  <script src="js/tile.js"></script>
-  <script src="js/local_storage_manager.js"></script>
-  <script src="js/sound_manager.js"></script>
-  <script src="js/confetti_manager.js"></script>
-  <script src="js/game_manager.js"></script>
-  <script src="js/application.js"></script>
-</body>
+  <script>
+    class GameManager {
+      constructor() {
+        this.size = 4;
+        this.startTiles = 2;
+        this.score = 0;
+        this.bestScore = localStorage.getItem('bestScore2048') || 0;
+        this.over = false;
+        this.won = false;
+        this.keepPlaying = false;
+        
+        this.inputAllowed = true; 
 
+        // DOM Elements
+        this.tileContainer = document.getElementById('tile-container');
+        this.scoreContainer = document.getElementById('score');
+        this.bestContainer = document.getElementById('best-score');
+        this.messageContainer = document.getElementById('game-message');
+        this.messageText = document.getElementById('game-message-text');
+        
+        this.setupInput();
+        this.setup();
+      }
+
+      setup() {
+        this.grid = new Grid(this.size);
+        this.score = 0;
+        this.over = false;
+        this.won = false;
+        this.keepPlaying = false;
+        
+        this.addStartTiles();
+        this.actuate();
+      }
+
+      restart() {
+        this.messageContainer.classList.remove('show');
+        this.messageContainer.classList.remove('game-won');
+        this.setup();
+      }
+
+      addStartTiles() {
+        for (let i = 0; i < this.startTiles; i++) {
+          this.addRandomTile();
+        }
+      }
+
+      addRandomTile() {
+        if (this.grid.cellsAvailable()) {
+          const value = Math.random() < 0.9 ? 2 : 4;
+          const tile = new Tile(this.grid.randomAvailableCell(), value);
+          this.grid.insertTile(tile);
+        }
+      }
+
+      actuate() {
+        this.tileContainer.innerHTML = '';
+
+        this.grid.cells.forEach(column => {
+          column.forEach(cell => {
+            if (cell) {
+              this.addTileToDom(cell);
+            }
+          });
+        });
+
+        this.scoreContainer.textContent = this.score;
+        if (this.score > this.bestScore) {
+            this.bestScore = this.score;
+            localStorage.setItem('bestScore2048', this.bestScore);
+        }
+        this.bestContainer.textContent = this.bestScore;
+
+        if (this.over) {
+            this.messageText.textContent = "Game Over!";
+            this.messageContainer.classList.add('show');
+        } else if (this.won && !this.keepPlaying) {
+            this.messageText.textContent = "You Win!";
+            this.messageContainer.classList.add('show');
+            this.messageContainer.classList.add('game-won');
+        }
+      }
+
+      addTileToDom(tile) {
+        const wrapper = document.createElement("div");
+        const inner = document.createElement("div");
+        const position = tile.previousPosition || { x: tile.x, y: tile.y };
+        
+        // Gap detection
+        const gap = window.innerWidth <= 520 ? 10 : 15;
+        
+        const setTransform = (el, x, y) => {
+            el.style.transform = `translate(calc(${x} * (100% + ${gap}px)), calc(${y} * (100% + ${gap}px)))`;
+        };
+
+        setTransform(wrapper, position.x, position.y);
+
+        wrapper.classList.add("tile", "tile-" + tile.value);
+        if (tile.value > 2048) wrapper.classList.add("tile-super");
+
+        inner.classList.add("tile-inner");
+        inner.textContent = tile.value;
+        wrapper.appendChild(inner);
+        this.tileContainer.appendChild(wrapper);
+
+        if (tile.previousPosition) {
+            void wrapper.offsetWidth; // Force Reflow
+            setTransform(wrapper, tile.x, tile.y);
+        } else if (tile.mergedFrom) {
+            wrapper.classList.add("tile-merged");
+            tile.mergedFrom.forEach(merged => {
+                this.addTileToDom(merged);
+            });
+        } else {
+            wrapper.classList.add("tile-new");
+        }
+      }
+
+      setupInput() {
+        // Keyboard
+        document.addEventListener('keydown', (event) => {
+            const map = {
+                38: 0, // Up
+                39: 1, // Right
+                40: 2, // Down
+                37: 3, // Left
+                75: 0, // Vim up
+                76: 1, // Vim right
+                74: 2, // Vim down
+                72: 3, // Vim left
+                87: 0, // W
+                68: 1, // D
+                83: 2, // S
+                65: 3  // A
+            };
+            const modifiers = event.altKey || event.ctrlKey || event.metaKey || event.shiftKey;
+            const mapped = map[event.which];
+
+            if (!modifiers && mapped !== undefined) {
+                event.preventDefault();
+                this.move(mapped);
+            }
+        });
+
+        // Touch handling (Mobile)
+        let touchStartClientX, touchStartClientY;
+        const gameContainer = document.querySelector('.game-container');
+
+        gameContainer.addEventListener('touchstart', (event) => {
+            if (event.touches.length > 1) return;
+            touchStartClientX = event.touches[0].clientX;
+            touchStartClientY = event.touches[0].clientY;
+            event.preventDefault(); // Ngăn scroll
+        }, {passive: false});
+
+        gameContainer.addEventListener('touchmove', (event) => {
+            event.preventDefault(); // Quan trọng: Ngăn kéo trang khi đang vuốt
+        }, {passive: false});
+
+        gameContainer.addEventListener('touchend', (event) => {
+            if (event.touches.length > 0) return;
+            const touchEndClientX = event.changedTouches[0].clientX;
+            const touchEndClientY = event.changedTouches[0].clientY;
+
+            const dx = touchEndClientX - touchStartClientX;
+            const absDx = Math.abs(dx);
+            const dy = touchEndClientY - touchStartClientY;
+            const absDy = Math.abs(dy);
+
+            // Giảm ngưỡng vuốt để nhạy hơn (30px -> 10px)
+            if (Math.max(absDx, absDy) > 10) {
+                // (right : left) : (down : up)
+                this.move(absDx > absDy ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0));
+            }
+        }, {passive: false});
+      }
+
+      move(direction) {
+        if (this.isGameTerminated()) return;
+        
+        if (!this.inputAllowed) return;
+
+        const vector = this.getVector(direction);
+        const traversals = this.buildTraversals(vector);
+        let moved = false;
+
+        this.prepareTiles();
+
+        traversals.x.forEach(x => {
+            traversals.y.forEach(y => {
+                const cell = { x: x, y: y };
+                const tile = this.grid.cellContent(cell);
+
+                if (tile) {
+                    const positions = this.findFarthestPosition(cell, vector);
+                    const next = this.grid.cellContent(positions.next);
+
+                    if (next && next.value === tile.value && !next.mergedFrom) {
+                        const merged = new Tile(positions.next, tile.value * 2);
+                        merged.mergedFrom = [tile, next];
+
+                        this.grid.insertTile(merged);
+                        this.grid.removeTile(tile);
+
+                        tile.updatePosition(positions.next);
+                        this.score += merged.value;
+
+                        if (merged.value === 2048) this.won = true;
+                    } else {
+                        this.moveTile(tile, positions.farthest);
+                    }
+
+                    if (!this.positionsEqual(cell, tile)) {
+                        moved = true;
+                    }
+                }
+            });
+        });
+
+        if (moved) {
+            this.addRandomTile();
+            if (!this.movesAvailable()) {
+                this.over = true;
+            }
+            this.actuate();
+            
+            this.inputAllowed = false;
+            setTimeout(() => {
+                this.inputAllowed = true;
+            }, 100); 
+        }
+      }
+
+      getVector(direction) {
+        const map = {
+            0: { x: 0, y: -1 }, // Up
+            1: { x: 1, y: 0 },  // Right
+            2: { x: 0, y: 1 },  // Down
+            3: { x: -1, y: 0 }  // Left
+        };
+        return map[direction];
+      }
+
+      buildTraversals(vector) {
+        const traversals = { x: [], y: [] };
+        for (let pos = 0; pos < this.size; pos++) {
+            traversals.x.push(pos);
+            traversals.y.push(pos);
+        }
+        if (vector.x === 1) traversals.x = traversals.x.reverse();
+        if (vector.y === 1) traversals.y = traversals.y.reverse();
+        return traversals;
+      }
+
+      findFarthestPosition(cell, vector) {
+        let previous;
+        do {
+            previous = cell;
+            cell = { x: previous.x + vector.x, y: previous.y + vector.y };
+        } while (this.grid.withinBounds(cell) && this.grid.cellAvailable(cell));
+
+        return {
+            farthest: previous,
+            next: cell
+        };
+      }
+
+      movesAvailable() {
+        return this.grid.cellsAvailable() || this.tileMatchesAvailable();
+      }
+
+      tileMatchesAvailable() {
+        for (let x = 0; x < this.size; x++) {
+            for (let y = 0; y < this.size; y++) {
+                const tile = this.grid.cellContent({ x, y });
+                if (tile) {
+                    for (let direction = 0; direction < 4; direction++) {
+                        const vector = this.getVector(direction);
+                        const cell = { x: x + vector.x, y: y + vector.y };
+                        const other = this.grid.cellContent(cell);
+                        if (other && other.value === tile.value) return true;
+                    }
+                }
+            }
+        }
+        return false;
+      }
+
+      prepareTiles() {
+        this.grid.eachCell((x, y, tile) => {
+            if (tile) {
+                tile.mergedFrom = null;
+                tile.savePosition();
+            }
+        });
+      }
+
+      moveTile(tile, cell) {
+        this.grid.cells[tile.x][tile.y] = null;
+        this.grid.cells[cell.x][cell.y] = tile;
+        tile.updatePosition(cell);
+      }
+
+      positionsEqual(first, second) {
+        return first.x === second.x && first.y === second.y;
+      }
+
+      isGameTerminated() {
+        return this.over || (this.won && !this.keepPlaying);
+      }
+    }
+
+    class Grid {
+      constructor(size) {
+        this.size = size;
+        this.cells = this.empty();
+      }
+
+      empty() {
+        const cells = [];
+        for (let x = 0; x < this.size; x++) {
+            const row = cells[x] = [];
+            for (let y = 0; y < this.size; y++) {
+                row.push(null);
+            }
+        }
+        return cells;
+      }
+
+      randomAvailableCell() {
+        const cells = this.availableCells();
+        if (cells.length) {
+            return cells[Math.floor(Math.random() * cells.length)];
+        }
+      }
+
+      availableCells() {
+        const cells = [];
+        this.eachCell((x, y, tile) => {
+            if (!tile) cells.push({ x: x, y: y });
+        });
+        return cells;
+      }
+
+      eachCell(callback) {
+        for (let x = 0; x < this.size; x++) {
+            for (let y = 0; y < this.size; y++) {
+                callback(x, y, this.cells[x][y]);
+            }
+        }
+      }
+
+      cellsAvailable() {
+        return !!this.availableCells().length;
+      }
+
+      cellAvailable(cell) {
+        return !this.cellOccupied(cell);
+      }
+
+      cellOccupied(cell) {
+        return !!this.cellContent(cell);
+      }
+
+      cellContent(cell) {
+        if (this.withinBounds(cell)) {
+            return this.cells[cell.x][cell.y];
+        } else {
+            return null;
+        }
+      }
+
+      insertTile(tile) {
+        this.cells[tile.x][tile.y] = tile;
+      }
+
+      removeTile(tile) {
+        this.cells[tile.x][tile.y] = null;
+      }
+
+      withinBounds(position) {
+        return position.x >= 0 && position.x < this.size &&
+               position.y >= 0 && position.y < this.size;
+      }
+    }
+
+    class Tile {
+      constructor(position, value) {
+        this.x = position.x;
+        this.y = position.y;
+        this.value = value || 2;
+        this.previousPosition = null;
+        this.mergedFrom = null;
+      }
+
+      savePosition() {
+        this.previousPosition = { x: this.x, y: this.y };
+      }
+
+      updatePosition(position) {
+        this.x = position.x;
+        this.y = position.y;
+      }
+    }
+
+    const game = new GameManager();
+  </script>
+</body>
 </html>

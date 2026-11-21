@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Jewels - Xếp Kim Cương</title>
+    <style>
+        :root {
+            --bg-color: #0f0c29;
+            --board-bg: rgba(0, 0, 0, 0.5);
+            --gem-size: 45px;
+            --gap: 4px;
+            --board-padding: 10px;
+            --highlight-color: rgba(255, 255, 255, 0.4);
+            --neon-glow: 0 0 10px rgba(255, 255, 255, 0.5), 0 0 20px rgba(255, 0, 255, 0.3);
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            background: linear-gradient(to right, #00f260, #0575e6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(5, 117, 230, 0.5);
+            letter-spacing: 2px;
+        }
+
+        #ui-container {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 15px;
+            padding: 0 10px;
+            box-sizing: border-box;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(5px);
+            font-weight: bold;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        #game-container {
+            position: relative;
+            background: var(--board-bg);
+            border-radius: 15px;
+            padding: var(--board-padding);
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            /* Kích thước board sẽ được set bằng JS */
+        }
+
+        /* Lớp nền grid (các ô trống) */
+        .grid-background {
+            display: grid;
+            grid-template-columns: repeat(8, var(--gem-size));
+            grid-template-rows: repeat(8, var(--gem-size));
+            gap: var(--gap);
+        }
+
+        .grid-cell {
+            width: var(--gem-size);
+            height: var(--gem-size);
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+        }
+
+        /* Lớp chứa các viên kim cương (nằm đè lên background) */
+        #gem-layer {
+            position: absolute;
+            top: var(--board-padding);
+            left: var(--board-padding);
+            width: calc(100% - 2 * var(--board-padding));
+            height: calc(100% - 2 * var(--board-padding));
+            pointer-events: none; /* Để click xuyên qua xuống background nếu cần, nhưng ta sẽ xử lý click riêng */
+        }
+
+        .gem {
+            position: absolute;
+            width: var(--gem-size);
+            height: var(--gem-size);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: calc(var(--gem-size) * 0.7);
+            cursor: pointer;
+            pointer-events: auto;
+            transition: transform 0.2s, filter 0.2s;
+            border-radius: 50%;
+            /* Quan trọng cho animation di chuyển */
+            transition-property: top, left, transform, opacity, filter;
+            transition-duration: 0.3s;
+            transition-timing-function: ease-in-out;
+            z-index: 10;
+            
+            /* Hiệu ứng bóng bẩy */
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.2), transparent);
+            box-shadow: inset 0 0 5px rgba(255,255,255,0.1);
+        }
+
+        .gem:hover {
+            filter: brightness(1.2);
+            transform: scale(1.05);
+        }
+
+        .gem.selected {
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 15px #fff, inset 0 0 10px #fff;
+            animation: pulse 1s infinite;
+            z-index: 20;
+        }
+
+        .gem.matched {
+            transform: scale(0);
+            opacity: 0;
+            transition: transform 0.3s, opacity 0.3s;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        /* Nút điều khiển */
+        .btn {
+            margin-top: 20px;
+            padding: 10px 25px;
+            font-size: 1.1rem;
+            background: linear-gradient(45deg, #ff0099, #493240);
+            border: none;
+            border-radius: 25px;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(255, 0, 153, 0.4);
+            transition: transform 0.1s, box-shadow 0.2s;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 5px rgba(255, 0, 153, 0.4);
+        }
+
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3rem;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 20px #ff0099;
+            pointer-events: none;
+            opacity: 0;
+            z-index: 100;
+        }
+
+        .pop-text {
+            animation: popUp 1s ease-out forwards;
+        }
+
+        @keyframes popUp {
+            0% { opacity: 0; transform: translate(-50%, -20%) scale(0.5); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            100% { opacity: 0; transform: translate(-50%, -80%) scale(1); }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 500px) {
+            :root {
+                --gem-size: 11vw;
+                --gap: 2px;
+                --board-padding: 5px;
+            }
+            h1 { font-size: 1.8rem; }
+            #ui-container { margin-bottom: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Neon Jewels</h1>
+    
+    <div id="ui-container">
+        <div class="stat-box">Điểm: <span id="score">0</span></div>
+        <div class="stat-box">Combo: <span id="combo">0</span></div>
+    </div>
+
+    <div id="game-container">
+        <div class="grid-background" id="grid-bg">
+            </div>
+        <div id="gem-layer">
+            </div>
+        <div id="message"></div>
+    </div>
+
+    <button class="btn" onclick="startGame()">Game Mới</button>
+
+    <script>
+        const ROWS = 8;
+        const COLS = 8;
+        const GEMS = ["💎", "🔴", "🔶", "💚", "💜", "🌙", "❄️"]; // Thêm icon cho đẹp
+        
+        let grid = []; // Lưu trữ dữ liệu logic (chứa object gem)
+        let score = 0;
+        let selectedGem = null;
+        let isProcessing = false; // Khóa bàn cờ khi đang animation
+        let comboCount = 0;
+
+        // Lấy kích thước thực tế từ CSS để tính toán vị trí tuyệt đối
+        // Sẽ được cập nhật khi resize hoặc start game
+        let GEM_SIZE_PX = 0;
+        let GAP_PX = 0;
+
+        const gemLayer = document.getElementById("gem-layer");
+        const gridBg = document.getElementById("grid-bg");
+        const scoreEl = document.getElementById("score");
+        const comboEl = document.getElementById("combo");
+        const msgEl = document.getElementById("message");
+
+        // --- CẤU TRÚC DỮ LIỆU ---
+        class Gem {
+            constructor(r, c, type) {
+                this.r = r;
+                this.c = c;
+                this.type = type;
+                this.el = document.createElement("div");
+                this.el.className = "gem";
+                this.el.textContent = type;
+                this.el.onclick = () => handleGemClick(this);
+                
+                // Set vị trí ban đầu (có thể sẽ cập nhật sau)
+                this.updatePosition();
+                gemLayer.appendChild(this.el);
+            }
+
+            updatePosition() {
+                // Tính toán vị trí left/top dựa trên r, c
+                const left = this.c * (GEM_SIZE_PX + GAP_PX);
+                const top = this.r * (GEM_SIZE_PX + GAP_PX);
+                this.el.style.left = `${left}px`;
+                this.el.style.top = `${top}px`;
+            }
+
+            moveTo(r, c) {
+                this.r = r;
+                this.c = c;
+                this.updatePosition();
+            }
+
+            destroy() {
+                this.el.classList.add("matched");
+                setTimeout(() => {
+                    if (this.el.parentNode) {
+                        this.el.parentNode.removeChild(this.el);
+                    }
+                }, 300); // Khớp với transition CSS
+            }
+        }
+
+        // --- INIT & SETUP ---
+
+        function initMetrics() {
+            // Lấy giá trị từ CSS variable đã tính toán (responsive)
+            const computedStyle = getComputedStyle(document.documentElement);
+            // Một chút hack để lấy giá trị pixel chính xác từ grid-cell đầu tiên nếu có
+            const tempCell = document.createElement("div");
+            tempCell.className = "grid-cell";
+            gridBg.appendChild(tempCell);
+            GEM_SIZE_PX = tempCell.offsetWidth;
+            gridBg.removeChild(tempCell);
+            
+            // Gap có thể lấy gần đúng hoặc fix cứng vì CSS dùng gap pixel
+            // Trên mobile gap nhỏ hơn
+            GAP_PX = window.innerWidth <= 500 ? 2 : 4;
+        }
+
+        function startGame() {
+            gemLayer.innerHTML = "";
+            gridBg.innerHTML = "";
+            grid = [];
+            score = 0;
+            scoreEl.innerText = "0";
+            comboCount = 0;
+            comboEl.innerText = "0";
+            isProcessing = false;
+            selectedGem = null;
+
+            initMetrics();
+            createGridBackground();
+            
+            // Tạo mảng 2 chiều
+            for (let r = 0; r < ROWS; r++) {
+                let row = [];
+                for (let c = 0; c < COLS; c++) {
+                    row.push(null);
+                }
+                grid.push(row);
+            }
+
+            // Điền gem và đảm bảo không có match sẵn
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    let type;
+                    do {
+                        type = GEMS[Math.floor(Math.random() * GEMS.length)];
+                    } while (
+                        (c >= 2 && grid[r][c-1].type === type && grid[r][c-2].type === type) ||
+                        (r >= 2 && grid[r-1][c].type === type && grid[r-2][c].type === type)
+                    );
+                    grid[r][c] = new Gem(r, c, type);
+                }
+            }
+        }
+
+        function createGridBackground() {
+            for(let i=0; i<64; i++) {
+                const cell = document.createElement("div");
+                cell.className = "grid-cell";
+                gridBg.appendChild(cell);
+            }
+        }
+
+        // --- GAME LOGIC ---
+
+        function handleGemClick(gem) {
+            if (isProcessing) return;
+
+            if (!selectedGem) {
+                // Chọn viên đầu tiên
+                select(gem);
+            } else if (selectedGem === gem) {
+                // Bỏ chọn
+                deselect();
+            } else {
+                // Chọn viên thứ 2 -> kiểm tra kề nhau
+                if (isAdjacent(selectedGem, gem)) {
+                    attemptSwap(selectedGem, gem);
+                } else {
+                    // Chọn viên khác không kề -> chuyển vùng chọn
+                    deselect();
+                    select(gem);
+                }
+            }
+        }
+
+        function select(gem) {
+            selectedGem = gem;
+            gem.el.classList.add("selected");
+        }
+
+        function deselect() {
+            if (selectedGem) {
+                selectedGem.el.classList.remove("selected");
+                selectedGem = null;
+            }
+        }
+
+        function isAdjacent(g1, g2) {
+            return Math.abs(g1.r - g2.r) + Math.abs(g1.c - g2.c) === 1;
+        }
+
+        async function attemptSwap(g1, g2) {
+            isProcessing = true;
+            deselect(); // Xóa highlight
+
+            // Hoán đổi vị trí trong logic
+            swapData(g1, g2);
+            
+            // Animation hoán đổi
+            g1.updatePosition();
+            g2.updatePosition();
+
+            // Chờ animation chạy xong (0.3s)
+            await wait(300);
+
+            // Kiểm tra match
+            const matches = findMatches();
+
+            if (matches.length > 0) {
+                // Thành công
+                comboCount = 0; // Reset combo cho lượt đi chủ động
+                await processMatches(matches);
+            } else {
+                // Thất bại -> đổi lại
+                swapData(g1, g2);
+                g1.updatePosition();
+                g2.updatePosition();
+                await wait(300);
+                isProcessing = false;
+            }
+        }
+
+        function swapData(g1, g2) {
+            // Swap coords
+            const tr = g1.r; const tc = g1.c;
+            g1.r = g2.r; g1.c = g2.c;
+            g2.r = tr; g2.c = tc;
+            
+            // Swap trong grid
+            grid[g1.r][g1.c] = g1;
+            grid[g2.r][g2.c] = g2;
+        }
+
+        function findMatches() {
+            let matchedSet = new Set();
+
+            // Check ngang
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS - 2; c++) {
+                    let g1 = grid[r][c], g2 = grid[r][c+1], g3 = grid[r][c+2];
+                    if (g1.type === g2.type && g2.type === g3.type) {
+                        matchedSet.add(g1); matchedSet.add(g2); matchedSet.add(g3);
+                    }
+                }
+            }
+
+            // Check dọc
+            for (let c = 0; c < COLS; c++) {
+                for (let r = 0; r < ROWS - 2; r++) {
+                    let g1 = grid[r][c], g2 = grid[r+1][c], g3 = grid[r+2][c];
+                    if (g1.type === g2.type && g2.type === g3.type) {
+                        matchedSet.add(g1); matchedSet.add(g2); matchedSet.add(g3);
+                    }
+                }
+            }
+
+            return Array.from(matchedSet);
+        }
+
+        async function processMatches(matches) {
+            comboCount++;
+            comboEl.innerText = comboCount;
+            
+            // Tính điểm: (số lượng * 10) * combo
+            const points = matches.length * 10 * comboCount;
+            score += points;
+            scoreEl.innerText = score;
+
+            // Hiển thị text điểm thưởng nếu combo cao
+            if (comboCount > 1) {
+                showFloatingText(`Combo x${comboCount}!`);
+            } else if (matches.length >= 4) {
+                showFloatingText("Tuyệt vời!");
+            }
+
+            // Xóa gem
+            matches.forEach(g => {
+                g.destroy();
+                grid[g.r][g.c] = null; // Đánh dấu ô trống
+            });
+
+            await wait(300); // Chờ hiệu ứng nổ
+
+            await applyGravity();
+        }
+
+        async function applyGravity() {
+            // Dồn các viên còn lại xuống dưới
+            for (let c = 0; c < COLS; c++) {
+                for (let r = ROWS - 1; r >= 0; r--) {
+                    if (grid[r][c] === null) {
+                        // Tìm viên gần nhất ở trên để kéo xuống
+                        for (let k = r - 1; k >= 0; k--) {
+                            if (grid[k][c] !== null) {
+                                // Di chuyển logic
+                                let gem = grid[k][c];
+                                grid[r][c] = gem;
+                                grid[k][c] = null;
+                                // Di chuyển hiển thị
+                                gem.moveTo(r, c);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Chờ các viên rơi xuống xong
+            await wait(300);
+
+            // Tạo viên mới ở các ô trống (từ trên rơi xuống ảo giác)
+            await fillNewGems();
+        }
+
+        async function fillNewGems() {
+            let moves = [];
+            for (let c = 0; c < COLS; c++) {
+                for (let r = 0; r < ROWS; r++) {
+                    if (grid[r][c] === null) {
+                        let type = GEMS[Math.floor(Math.random() * GEMS.length)];
+                        let gem = new Gem(r, c, type);
+                        
+                        // Đặt vị trí xuất phát ở trên nóc bàn cờ để rơi xuống
+                        gem.el.style.top = `-${GEM_SIZE_PX}px`;
+                        // Force reflow để trình duyệt nhận vị trí bắt đầu
+                        gem.el.offsetHeight; 
+                        
+                        // Cập nhật vị trí đích
+                        gem.updatePosition();
+                        
+                        grid[r][c] = gem;
+                    }
+                }
+            }
+
+            await wait(300); // Chờ rơi xong
+
+            // Đệ quy kiểm tra match mới
+            const newMatches = findMatches();
+            if (newMatches.length > 0) {
+                await processMatches(newMatches);
+            } else {
+                isProcessing = false; // Kết thúc chuỗi
+            }
+        }
+
+        // --- UTILS ---
+        function wait(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function showFloatingText(text) {
+            msgEl.innerText = text;
+            msgEl.className = ""; // Reset anim
+            void msgEl.offsetWidth; // Trigger reflow
+            msgEl.className = "pop-text";
+        }
+
+        // Handle Resize
+        window.addEventListener('resize', () => {
+            initMetrics();
+            // Cập nhật lại vị trí tất cả gem đang có
+            grid.forEach(row => {
+                row.forEach(gem => {
+                    if(gem) gem.updatePosition();
+                })
+            })
+        });
+
+        // Start
+        startGame();
+
+    </script>
+</body>
+</html>
